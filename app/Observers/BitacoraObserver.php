@@ -45,8 +45,8 @@ class BitacoraObserver
 
     private function registrar(Model $modelo, string $accion, ?array $anterior, ?array $nuevo): void
     {
-        // Los seeders y comandos de consola no se registran
-        if (app()->runningInConsole()) {
+        // Los comandos de consola no generan bitácora; las pruebas sí verifican estos registros.
+        if (app()->runningInConsole() && ! app()->runningUnitTests()) {
             return;
         }
 
@@ -54,12 +54,12 @@ class BitacoraObserver
         $nuevo = $nuevo ? $this->limpiar($nuevo) : null;
 
         Bitacora::create([
-            'user_id'        => Auth::id(),
-            'accion'         => $accion,
+            'user_id' => Auth::id(),
+            'accion' => $accion,
             'tabla_afectada' => $modelo->getTable(),
-            'registro_id'    => $modelo->getKey(),
+            'registro_id' => $modelo->getKey(),
             'valor_anterior' => $anterior ? json_encode($anterior, JSON_UNESCAPED_UNICODE) : null,
-            'valor_nuevo'    => $nuevo ? json_encode($nuevo, JSON_UNESCAPED_UNICODE) : null,
+            'valor_nuevo' => $nuevo ? json_encode($nuevo, JSON_UNESCAPED_UNICODE) : null,
         ]);
     }
 }

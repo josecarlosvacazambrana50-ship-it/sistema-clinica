@@ -49,24 +49,24 @@ class AgendaService
         $bloques = [];
 
         foreach ($horarios as $h) {
-            $inicio = Carbon::parse($fecha->toDateString() . ' ' . $h->hora_inicio);
-            $limite = Carbon::parse($fecha->toDateString() . ' ' . $h->hora_fin);
+            $inicio = Carbon::parse($fecha->toDateString().' '.$h->hora_inicio);
+            $limite = Carbon::parse($fecha->toDateString().' '.$h->hora_fin);
 
             while ($inicio->copy()->addMinutes($h->duracion_cita_min)->lte($limite)) {
                 $fin = $inicio->copy()->addMinutes($h->duracion_cita_min);
 
                 $choca = $ocupadas->contains(function ($c) use ($inicio, $fin, $fecha) {
-                    $ci = Carbon::parse($fecha->toDateString() . ' ' . $c->hora_inicio);
-                    $cf = Carbon::parse($fecha->toDateString() . ' ' . $c->hora_fin);
+                    $ci = Carbon::parse($fecha->toDateString().' '.$c->hora_inicio);
+                    $cf = Carbon::parse($fecha->toDateString().' '.$c->hora_fin);
 
                     return $inicio->lt($cf) && $fin->gt($ci);
                 });
 
                 $bloques[] = [
                     'inicio' => $inicio->format('H:i'),
-                    'fin'    => $fin->format('H:i'),
+                    'fin' => $fin->format('H:i'),
                     // No se ofrecen horas pasadas (RN06)
-                    'libre'  => ! $choca && $inicio->gt($ahora),
+                    'libre' => ! $choca && $inicio->gt($ahora),
                 ];
 
                 $inicio = $fin;

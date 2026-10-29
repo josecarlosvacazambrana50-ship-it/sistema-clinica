@@ -36,7 +36,7 @@
                         </div>
                     </div>
                 @endif
-                @foreach (\App\Models\Cita::TRANSICIONES[$cita->estado] as $estadoDestino)
+                @foreach (array_diff(\App\Models\Cita::TRANSICIONES[$cita->estado], ['cancelada']) as $estadoDestino)
                     @php
                         $permisoEstado = $estadoDestino === 'confirmada' ? 'confirmar' : 'atender';
                         $puedeGestionarEstado = Auth::user()->tienePermiso('citas', $permisoEstado)

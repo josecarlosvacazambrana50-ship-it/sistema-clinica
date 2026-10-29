@@ -27,7 +27,7 @@ class HistorialController extends Controller
     private function mostrar(Request $request, ?Paciente $paciente): View
     {
         $filtros = $request->validate([
-            'estado' => ['nullable', 'in:' . implode(',', array_keys(Cita::ESTADOS))],
+            'estado' => ['nullable', 'in:'.implode(',', array_keys(Cita::ESTADOS))],
             'fecha_desde' => ['nullable', 'date'],
             'fecha_hasta' => ['nullable', 'date', 'after_or_equal:fecha_desde'],
         ]);

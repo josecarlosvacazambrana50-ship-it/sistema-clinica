@@ -5,7 +5,9 @@ use App\Models\Especialidad;
 use App\Models\Medico;
 use App\Models\Paciente;
 use App\Models\User;
+use App\Services\ReporteService;
 use Database\Seeders\DatabaseSeeder;
+use Illuminate\Support\Facades\Hash;
 
 beforeEach(function () {
     $this->seed(DatabaseSeeder::class);
@@ -29,7 +31,7 @@ function crearCitaCiclo2(array $sobrescrituras = []): Cita
         'estado' => 'programada',
     ], $sobrescrituras));
 
-    $cita->update(['codigo' => 'CM-' . str_pad((string) $cita->id, 4, '0', STR_PAD_LEFT)]);
+    $cita->update(['codigo' => 'CM-'.str_pad((string) $cita->id, 4, '0', STR_PAD_LEFT)]);
 
     return $cita;
 }
@@ -45,7 +47,7 @@ it('reprograma una cita a un bloque libre y registra el cambio', function () {
     expect($cita->fecha->toDateString())->toBe($this->lunes)
         ->and($cita->hora_inicio_corta)->toBe('09:30')
         ->and($cita->hora_fin_corta)->toBe('10:00')
-        ->and($cita->codigo)->toBe('CM-' . str_pad((string) $cita->id, 4, '0', STR_PAD_LEFT))
+        ->and($cita->codigo)->toBe('CM-'.str_pad((string) $cita->id, 4, '0', STR_PAD_LEFT))
         ->and($cita->historial)->toHaveCount(1);
 });
 
@@ -68,6 +70,21 @@ it('no permite reprogramar una cita en estado final', function () {
         ->assertSessionHasErrors('cita');
 
     expect($cita->fresh()->hora_inicio_corta)->toBe('09:00');
+});
+
+it('solo acepta una reprogramación cuando dos citas compiten por el mismo horario', function () {
+    $primera = crearCitaCiclo2();
+    $segunda = crearCitaCiclo2(['hora_inicio' => '09:30', 'hora_fin' => '10:00']);
+
+    $this->actingAs($this->recepcion)
+        ->put(route('citas.reprogramar', $primera), ['fecha' => $this->lunes, 'hora_inicio' => '10:30'])
+        ->assertRedirect(route('citas.show', $primera));
+
+    $this->actingAs($this->recepcion)
+        ->put(route('citas.reprogramar', $segunda), ['fecha' => $this->lunes, 'hora_inicio' => '10:30'])
+        ->assertSessionHasErrors('hora_inicio');
+
+    expect(Cita::whereDate('fecha', $this->lunes)->where('hora_inicio', '10:30')->count())->toBe(1);
 });
 
 it('rechaza cancelar una cita sin motivo', function () {
@@ -142,6 +159,17 @@ it('registra el cambio de estado en el historial', function () {
     expect($cita->fresh()->estado)->toBe('atendida')
         ->and($cita->historial)->toHaveCount(1)
         ->and($cita->historial->first()->observacion)->toBe('Atención concluida');
+});
+
+it('muestra solo las acciones de estado válidas y la cancelación con motivo', function () {
+    $cita = crearCitaCiclo2();
+
+    $this->actingAs($this->recepcion)
+        ->get(route('citas.show', $cita))
+        ->assertOk()
+        ->assertSee('Confirmar cita')
+        ->assertSee('Cancelar cita')
+        ->assertDontSee('name="estado" value="cancelada"', false);
 });
 
 it('filtra la agenda por médico, fecha y estado', function () {
@@ -225,7 +253,7 @@ it('genera totales correctos en un reporte por período', function () {
         ->assertSee('Cancelada')
         ->assertSee('Inasistencia');
 
-    $reporte = app(\App\Services\ReporteService::class)->generar('resumen-periodo', $this->lunes, $this->lunes);
+    $reporte = app(ReporteService::class)->generar('resumen-periodo', $this->lunes, $this->lunes);
     expect($reporte['totalCitas'])->toBe(3)
         ->and($reporte['totalesPorEstado']['atendida'])->toBe(1)
         ->and($reporte['totalesPorEstado']['cancelada'])->toBe(1)
@@ -240,4 +268,94 @@ it('rechaza un rango de fechas invertido en reportes', function () {
             'fecha_hasta' => now()->toDateString(),
         ]))
         ->assertSessionHasErrors('fecha_hasta');
+});
+
+it('permite al paciente actualizar su perfil y registra la bitácora', function () {
+    $usuarioPaciente = User::where('email', 'maria@correo.com')->firstOrFail();
+
+    $this->actingAs($usuarioPaciente)
+        ->put(route('perfil.paciente.update'), [
+            'ci' => '00000000',
+            'codigo' => 'PAC-9999',
+            'estado' => 'inactivo',
+            'nombres' => 'María Elena',
+            'apellidos' => 'López Rivera',
+            'fecha_nacimiento' => '1990-04-12',
+            'sexo' => 'F',
+            'telefono' => '70123456',
+            'correo' => 'maria.actualizada@correo.com',
+            'direccion' => 'Av. Nueva 123',
+            'tipo_sangre' => 'O+',
+            'alergias' => 'Polen',
+        ])
+        ->assertRedirect(route('perfil.paciente.show'));
+
+    $paciente = $usuarioPaciente->fresh()->paciente;
+    expect($paciente->nombres)->toBe('María Elena')
+        ->and($paciente->ci)->toBe('6543210')
+        ->and($paciente->codigo)->toBe('PAC-0001')
+        ->and($paciente->estado)->toBe('activo')
+        ->and($usuarioPaciente->fresh()->email)->toBe('maria.actualizada@correo.com');
+
+    $this->assertDatabaseHas('bitacoras', [
+        'user_id' => $usuarioPaciente->id,
+        'tabla_afectada' => 'pacientes',
+        'registro_id' => $paciente->id,
+        'accion' => 'editar',
+    ]);
+});
+
+it('ignora cambios de CI enviados desde el perfil del paciente', function () {
+    $usuarioPaciente = User::where('email', 'maria@correo.com')->firstOrFail();
+
+    $this->actingAs($usuarioPaciente)
+        ->put(route('perfil.paciente.update'), [
+            'ci' => '00000000',
+            'nombres' => $usuarioPaciente->paciente->nombres,
+            'apellidos' => $usuarioPaciente->paciente->apellidos,
+            'fecha_nacimiento' => $usuarioPaciente->paciente->fecha_nacimiento->toDateString(),
+            'telefono' => $usuarioPaciente->paciente->telefono,
+        ])
+        ->assertRedirect(route('perfil.paciente.show'));
+
+    expect($usuarioPaciente->fresh()->paciente->ci)->toBe('6543210');
+});
+
+it('avisa cuando la cuenta paciente no tiene un perfil vinculado', function () {
+    $cita = crearCitaCiclo2();
+    $usuarioPaciente = User::create([
+        'email' => 'sin-perfil@correo.com',
+        'password' => 'password',
+        'rol_id' => User::where('email', 'maria@correo.com')->value('rol_id'),
+    ]);
+
+    $this->actingAs($usuarioPaciente)
+        ->get(route('perfil.paciente.show'))
+        ->assertOk()
+        ->assertSee('Contacta a recepción');
+
+    $this->actingAs($usuarioPaciente)->get(route('citas.index'))->assertDontSee($cita->codigo);
+    $this->actingAs($usuarioPaciente)->get(route('citas.show', $cita))->assertForbidden();
+});
+
+it('valida la contraseña actual y guarda el hash de la nueva contraseña', function () {
+    $usuarioPaciente = User::where('email', 'maria@correo.com')->firstOrFail();
+
+    $this->actingAs($usuarioPaciente)
+        ->put(route('perfil.paciente.password'), [
+            'current_password' => 'incorrecta',
+            'password' => 'nueva-clave-segura',
+            'password_confirmation' => 'nueva-clave-segura',
+        ])
+        ->assertSessionHasErrorsIn('updatePassword', 'current_password');
+
+    $this->actingAs($usuarioPaciente)
+        ->put(route('perfil.paciente.password'), [
+            'current_password' => 'password',
+            'password' => 'nueva-clave-segura',
+            'password_confirmation' => 'nueva-clave-segura',
+        ])
+        ->assertRedirect(route('perfil.paciente.show'));
+
+    expect(Hash::check('nueva-clave-segura', $usuarioPaciente->fresh()->password))->toBeTrue();
 });

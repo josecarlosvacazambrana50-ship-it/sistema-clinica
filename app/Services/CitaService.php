@@ -17,9 +17,7 @@ use Illuminate\Validation\ValidationException;
  */
 class CitaService
 {
-    public function __construct(private AgendaService $agenda)
-    {
-    }
+    public function __construct(private AgendaService $agenda) {}
 
     /**
      * Programa una cita. Se vuelve a comprobar la disponibilidad dentro de una transacción
@@ -54,24 +52,24 @@ class CitaService
                 }
 
                 $cita = Cita::create([
-                    'paciente_id'     => $paciente->id,
-                    'medico_id'       => $medico->id,
+                    'paciente_id' => $paciente->id,
+                    'medico_id' => $medico->id,
                     'especialidad_id' => $datos['especialidad_id'],
-                    'registrada_por'  => $usuario->id,
-                    'fecha'           => $fecha->toDateString(),
-                    'hora_inicio'     => $datos['hora_inicio'],
-                    'hora_fin'        => $datos['hora_fin'],
-                    'motivo'          => $datos['motivo'] ?? null,
-                    'estado'          => 'programada',
+                    'registrada_por' => $usuario->id,
+                    'fecha' => $fecha->toDateString(),
+                    'hora_inicio' => $datos['hora_inicio'],
+                    'hora_fin' => $datos['hora_fin'],
+                    'motivo' => $datos['motivo'] ?? null,
+                    'estado' => 'programada',
                 ]);
 
-                $cita->update(['codigo' => 'CM-' . str_pad((string) $cita->id, 4, '0', STR_PAD_LEFT)]);
+                $cita->update(['codigo' => 'CM-'.str_pad((string) $cita->id, 4, '0', STR_PAD_LEFT)]);
 
                 HistorialEstadoCita::create([
-                    'cita_id'       => $cita->id,
-                    'estado_nuevo'  => 'programada',
-                    'user_id'       => $usuario->id,
-                    'observacion'   => 'Cita registrada',
+                    'cita_id' => $cita->id,
+                    'estado_nuevo' => 'programada',
+                    'user_id' => $usuario->id,
+                    'observacion' => 'Cita registrada',
                 ]);
 
                 return $cita;
@@ -126,7 +124,7 @@ class CitaService
                 }
 
                 $fechaAnterior = $cita->fecha->format('Y-m-d');
-                $horaAnterior = $cita->hora_inicio_corta . '–' . $cita->hora_fin_corta;
+                $horaAnterior = $cita->hora_inicio_corta.'–'.$cita->hora_fin_corta;
                 $estadoAnterior = $cita->estado;
                 $nuevoEstado = $estadoAnterior === 'confirmada' ? 'programada' : $estadoAnterior;
 
@@ -142,7 +140,7 @@ class CitaService
                     'estado_anterior' => $estadoAnterior,
                     'estado_nuevo' => $nuevoEstado,
                     'user_id' => $usuario->id,
-                    'observacion' => trim(($observacion ? $observacion . ' — ' : '') . "Reprogramada desde {$fechaAnterior} {$horaAnterior}"),
+                    'observacion' => trim(($observacion ? $observacion.' — ' : '')."Reprogramada desde {$fechaAnterior} {$horaAnterior}"),
                 ]);
 
                 return $cita->refresh();
@@ -190,6 +188,9 @@ class CitaService
 
             if (! in_array($nuevoEstado, $permitidos, true)) {
                 $this->error('estado', 'El cambio de estado solicitado no está permitido.');
+            }
+            if ($nuevoEstado === 'cancelada') {
+                $this->error('estado', 'Para cancelar una cita debes registrar el motivo de cancelación.');
             }
 
             $permiso = $nuevoEstado === 'confirmada' ? 'confirmar' : 'atender';

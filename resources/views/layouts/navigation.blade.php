@@ -68,7 +68,7 @@
                 <div class="text-xs text-gray-400 truncate">{{ Auth::user()->email }}</div>
             </div>
 
-            <a href="{{ route('profile.edit') }}"
+            <a href="{{ Auth::user()->rol->nombre === 'Paciente' ? route('perfil.paciente.show') : route('profile.edit') }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition
                       {{ request()->routeIs('profile.*') ? 'bg-white text-gray-900' : 'text-gray-300 hover:bg-[#2F5597] hover:text-white' }}">
                 <span class="w-6 text-center text-lg leading-none">⚙️</span>

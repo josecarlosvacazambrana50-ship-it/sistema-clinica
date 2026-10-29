@@ -15,10 +15,10 @@ class Cita extends Model
     ];
 
     public const ESTADOS = [
-        'programada'   => 'Programada',
-        'confirmada'   => 'Confirmada',
-        'atendida'     => 'Atendida',
-        'cancelada'    => 'Cancelada',
+        'programada' => 'Programada',
+        'confirmada' => 'Confirmada',
+        'atendida' => 'Atendida',
+        'cancelada' => 'Cancelada',
         'inasistencia' => 'Inasistencia',
     ];
 

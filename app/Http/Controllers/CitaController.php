@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\CitaRequest;
-use App\Http\Requests\CancelarCitaRequest;
 use App\Http\Requests\CambiarEstadoRequest;
+use App\Http\Requests\CancelarCitaRequest;
+use App\Http\Requests\CitaRequest;
 use App\Http\Requests\ReprogramarCitaRequest;
 use App\Models\Cita;
 use App\Models\Especialidad;
@@ -23,9 +23,7 @@ use Illuminate\View\View;
 /** CU08 - Programar Cita */
 class CitaController extends Controller implements HasMiddleware
 {
-    public function __construct(private CitaService $citas, private AgendaService $agenda)
-    {
-    }
+    public function __construct(private CitaService $citas, private AgendaService $agenda) {}
 
     public static function middleware(): array
     {
@@ -44,7 +42,7 @@ class CitaController extends Controller implements HasMiddleware
         $citas = Cita::with(['paciente', 'medico', 'especialidad'])
             // Cada médico ve solo su agenda y cada paciente solo sus citas (RN12)
             ->when($user->esMedico(), fn ($q) => $q->where('medico_id', $user->medico_id))
-            ->when($user->esPaciente(), fn ($q) => $q->where('paciente_id', $user->paciente_id))
+            ->when($user->rol->nombre === 'Paciente', fn ($q) => $q->where('paciente_id', $user->paciente_id))
             ->when($request->filled('fecha'), fn ($q) => $q->whereDate('fecha', $request->query('fecha')))
             ->when($request->filled('medico_id') && ! $user->esMedico(), fn ($q) => $q->where('medico_id', $request->query('medico_id')))
             ->when($request->filled('estado'), fn ($q) => $q->where('estado', $request->query('estado')))
@@ -52,7 +50,7 @@ class CitaController extends Controller implements HasMiddleware
             ->paginate(12)->withQueryString();
 
         return view('citas.index', [
-            'citas'   => $citas,
+            'citas' => $citas,
             'medicos' => Medico::orderBy('apellidos')->get(),
             'filtros' => $request->only('fecha', 'medico_id', 'estado'),
         ]);
@@ -61,7 +59,7 @@ class CitaController extends Controller implements HasMiddleware
     public function create(): View
     {
         return view('citas.create', [
-            'pacientes'      => Paciente::activos()->orderBy('apellidos')->orderBy('nombres')->get(),
+            'pacientes' => Paciente::activos()->orderBy('apellidos')->orderBy('nombres')->get(),
             'especialidades' => Especialidad::activas()->orderBy('nombre')->get(),
         ]);
     }
@@ -78,7 +76,7 @@ class CitaController extends Controller implements HasMiddleware
     {
         $user = $request->user();
         abort_if($user->esMedico() && $cita->medico_id !== $user->medico_id, 403);
-        abort_if($user->esPaciente() && $cita->paciente_id !== $user->paciente_id, 403);
+        abort_if($user->rol->nombre === 'Paciente' && $cita->paciente_id !== $user->paciente_id, 403);
 
         $cita->load(['paciente', 'medico', 'especialidad', 'registradaPor', 'historial.usuario']);
 

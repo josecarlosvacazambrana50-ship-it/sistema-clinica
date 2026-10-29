@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use Illuminate\Database\Query\Builder;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class ReporteService

@@ -8,9 +8,7 @@ use Illuminate\View\View;
 
 class ReporteController extends Controller
 {
-    public function __construct(private ReporteService $reportes)
-    {
-    }
+    public function __construct(private ReporteService $reportes) {}
 
     public function index(): View
     {

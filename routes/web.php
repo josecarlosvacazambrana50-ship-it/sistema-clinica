@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\BitacoraController;
 use App\Http\Controllers\AgendaController;
+use App\Http\Controllers\BitacoraController;
 use App\Http\Controllers\CitaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EspecialidadController;
@@ -9,6 +9,7 @@ use App\Http\Controllers\HistorialController;
 use App\Http\Controllers\HorarioController;
 use App\Http\Controllers\MedicoController;
 use App\Http\Controllers\PacienteController;
+use App\Http\Controllers\PerfilPacienteController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\RolController;
@@ -24,6 +25,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::get('mi-perfil', [PerfilPacienteController::class, 'mostrar'])
+        ->middleware('permiso:perfil,editar')->name('perfil.paciente.show');
+    Route::put('mi-perfil', [PerfilPacienteController::class, 'actualizar'])
+        ->middleware('permiso:perfil,editar')->name('perfil.paciente.update');
+    Route::put('mi-perfil/password', [PerfilPacienteController::class, 'actualizarContrasena'])
+        ->middleware('permiso:perfil,editar')->name('perfil.paciente.password');
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('verified')->name('dashboard');
     Route::get('agenda', [AgendaController::class, 'index'])
@@ -82,4 +89,4 @@ Route::middleware('auth')->group(function () {
         ->middleware('permiso:bitacora,mostrar')->name('bitacora.index');
 });
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';

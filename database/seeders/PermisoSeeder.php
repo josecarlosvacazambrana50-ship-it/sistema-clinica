@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\Permiso;
 use App\Models\Rol;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -27,6 +26,7 @@ class PermisoSeeder extends Seeder
             'agenda' => ['ver'],
             'historial' => ['ver'],
             'reportes' => ['ver'],
+            'perfil' => ['editar'],
             'citas' => array_merge($crud, ['reprogramar', 'cancelar', 'confirmar', 'atender']),
             'bitacora' => ['mostrar'],
         ];
@@ -38,13 +38,14 @@ class PermisoSeeder extends Seeder
             'ver' => 'Ver',
             'historial' => 'Consultar',
             'reportes' => 'Consultar',
+            'editar' => 'Editar',
         ];
 
         foreach ($modulos as $modulo => $acciones) {
             foreach ($acciones as $accion) {
                 Permiso::firstOrCreate(
                     ['modulo' => $modulo, 'accion' => $accion],
-                    ['nombre' => $verbos[$accion] . ' ' . $modulo]
+                    ['nombre' => $verbos[$accion].' '.$modulo]
                 );
             }
         }
@@ -76,6 +77,7 @@ class PermisoSeeder extends Seeder
         $this->asignar('Paciente', $this->idsPara([
             'citas' => ['mostrar'],
             'historial' => ['ver'],
+            'perfil' => ['editar'],
         ]));
     }
 
@@ -83,7 +85,7 @@ class PermisoSeeder extends Seeder
     {
         return Permiso::where(function ($q) use ($modulos) {
             foreach ($modulos as $modulo => $acciones) {
-                $q->orWhere(fn($w) => $w->where('modulo', $modulo)->whereIn('accion', $acciones));
+                $q->orWhere(fn ($w) => $w->where('modulo', $modulo)->whereIn('accion', $acciones));
             }
         })->pluck('id');
     }
@@ -92,7 +94,7 @@ class PermisoSeeder extends Seeder
     {
         $rolId = Rol::where('nombre', $nombreRol)->value('id');
 
-        $filas = collect($ids)->map(fn($id) => [
+        $filas = collect($ids)->map(fn ($id) => [
             'rol_id' => $rolId,
             'permiso_id' => $id,
             'created_at' => now(),

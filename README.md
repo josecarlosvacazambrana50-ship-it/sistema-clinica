@@ -30,14 +30,16 @@ php artisan serve              # http://127.0.0.1:8000
 ```bash
 php artisan test
 ```
-20 pruebas (cubren las 10 pruebas mínimas del examen).
+41 pruebas y 165 aserciones: 20 pruebas del Ciclo #1 y 21 del Ciclo #2.
 
 ## Estructura
 - `app/Http/Controllers`, `app/Http/Requests`, `app/Http/Middleware/VerificarPermiso.php`
-- `app/Services` — `CitaService` (programar con transacción) y `AgendaService` (horarios libres)
+- `app/Services` — `CitaService` (programación, reprogramación y estados), `AgendaService` (agenda y horarios libres) y `ReporteService`
 - `app/Models`, `app/Observers/BitacoraObserver.php`
 - `database/migrations`, `database/seeders`
 - `resources/views`, `resources/js` (`validaciones.js`, `citas.js`)
-- `tests/Feature/ClinicaTest.php`
+- `tests/Feature/ClinicaTest.php`, `tests/Feature/ClinicaCiclo2Test.php`
 
-Casos de uso implementados (Ciclo #1): CU01 a CU08. Ciclo #2: CU09 a CU15.
+Casos de uso implementados:
+- Ciclo #1: CU01–CU08.
+- Ciclo #2: CU09 reprogramar cita, CU10 cancelar cita, CU11 controlar asistencia, CU12 consultar agenda médica, CU13 consultar historial, CU14 generar reportes y CU15 gestionar perfil del paciente.

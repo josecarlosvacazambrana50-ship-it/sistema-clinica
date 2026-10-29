@@ -11,15 +11,13 @@ use Illuminate\View\View;
 
 class AgendaController extends Controller
 {
-    public function __construct(private AgendaService $agenda)
-    {
-    }
+    public function __construct(private AgendaService $agenda) {}
 
     public function index(Request $request): View
     {
         $filtros = $request->validate([
             'fecha' => ['nullable', 'date'],
-            'estado' => ['nullable', 'in:' . implode(',', array_keys(Cita::ESTADOS))],
+            'estado' => ['nullable', 'in:'.implode(',', array_keys(Cita::ESTADOS))],
         ]);
         $usuario = $request->user();
         if (! $usuario->esMedico()) {
