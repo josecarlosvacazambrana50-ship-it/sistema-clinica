@@ -204,3 +204,40 @@ it('filtra el historial por estado y rango de fechas', function () {
         ]))
         ->assertSessionHasErrors('fecha_hasta');
 });
+
+it('genera totales correctos en un reporte por período', function () {
+    crearCitaCiclo2(['estado' => 'atendida']);
+    crearCitaCiclo2([
+        'hora_inicio' => '09:30', 'hora_fin' => '10:00',
+        'estado' => 'cancelada', 'motivo_cancelacion' => 'Cancelada para prueba',
+    ]);
+    crearCitaCiclo2(['hora_inicio' => '10:00', 'hora_fin' => '10:30', 'estado' => 'inasistencia']);
+
+    $this->actingAs($this->recepcion)
+        ->get(route('reportes.mostrar', [
+            'tipo' => 'resumen-periodo',
+            'fecha_desde' => $this->lunes,
+            'fecha_hasta' => $this->lunes,
+        ]))
+        ->assertOk()
+        ->assertSee('Resumen del período')
+        ->assertSee('Atendida')
+        ->assertSee('Cancelada')
+        ->assertSee('Inasistencia');
+
+    $reporte = app(\App\Services\ReporteService::class)->generar('resumen-periodo', $this->lunes, $this->lunes);
+    expect($reporte['totalCitas'])->toBe(3)
+        ->and($reporte['totalesPorEstado']['atendida'])->toBe(1)
+        ->and($reporte['totalesPorEstado']['cancelada'])->toBe(1)
+        ->and($reporte['totalesPorEstado']['inasistencia'])->toBe(1);
+});
+
+it('rechaza un rango de fechas invertido en reportes', function () {
+    $this->actingAs($this->recepcion)
+        ->get(route('reportes.mostrar', [
+            'tipo' => 'por-fecha',
+            'fecha_desde' => $this->lunes,
+            'fecha_hasta' => now()->toDateString(),
+        ]))
+        ->assertSessionHasErrors('fecha_hasta');
+});

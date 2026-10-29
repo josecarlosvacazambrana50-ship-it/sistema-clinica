@@ -10,6 +10,7 @@ use App\Http\Controllers\HorarioController;
 use App\Http\Controllers\MedicoController;
 use App\Http\Controllers\PacienteController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Support\Facades\Route;
@@ -27,6 +28,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('verified')->name('dashboard');
     Route::get('agenda', [AgendaController::class, 'index'])
         ->middleware('permiso:agenda,ver')->name('agenda.index');
+    Route::get('reportes', [ReporteController::class, 'index'])
+        ->middleware('permiso:reportes,ver')->name('reportes.index');
+    Route::get('reportes/{tipo}', [ReporteController::class, 'mostrar'])
+        ->middleware('permiso:reportes,ver')->name('reportes.mostrar');
 
     // CU03 - Usuarios, roles y permisos
     Route::resource('usuarios', UsuarioController::class)->except(['show', 'destroy'])

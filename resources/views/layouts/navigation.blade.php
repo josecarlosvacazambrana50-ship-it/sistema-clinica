@@ -3,6 +3,7 @@
         ['modulo' => null,             'ruta' => 'dashboard',          'activo' => 'dashboard',        'icono' => '🏠', 'texto' => 'Inicio'],
         ['modulo' => 'citas',          'ruta' => 'citas.index',        'activo' => 'citas.*',          'icono' => '📅', 'texto' => Auth::user()->esPaciente() ? 'Mis citas' : 'Citas médicas'],
         ['modulo' => 'historial',      'ruta' => 'mi.historial',       'activo' => 'mi.historial',     'icono' => '🗂️', 'texto' => 'Mi historial'],
+        ['modulo' => 'reportes',       'ruta' => 'reportes.index',     'activo' => 'reportes.*',       'icono' => '📊', 'texto' => 'Reportes'],
         ['modulo' => 'agenda',         'ruta' => 'agenda.index',       'activo' => 'agenda.*',         'icono' => '🗓️', 'texto' => 'Agenda médica'],
         ['modulo' => 'pacientes',      'ruta' => 'pacientes.index',    'activo' => 'pacientes.*',      'icono' => '👥', 'texto' => 'Pacientes'],
         ['modulo' => 'medicos',        'ruta' => 'medicos.index',      'activo' => 'medicos.*',        'icono' => '🩺', 'texto' => 'Médicos y horarios'],
