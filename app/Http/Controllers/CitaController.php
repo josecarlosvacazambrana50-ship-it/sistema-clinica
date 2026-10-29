@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\CitaRequest;
+use App\Http\Requests\CancelarCitaRequest;
 use App\Http\Requests\ReprogramarCitaRequest;
 use App\Models\Cita;
 use App\Models\Especialidad;
@@ -31,6 +32,7 @@ class CitaController extends Controller implements HasMiddleware
             new Middleware('permiso:citas,mostrar', only: ['index', 'show']),
             new Middleware('permiso:citas,crear', only: ['create', 'store', 'disponibilidad', 'medicosPorEspecialidad']),
             new Middleware('permiso:citas,reprogramar', only: ['formReprogramar', 'reprogramar']),
+            new Middleware('permiso:citas,cancelar', only: ['cancelar']),
         ];
     }
 
@@ -102,6 +104,14 @@ class CitaController extends Controller implements HasMiddleware
 
         return redirect()->route('citas.show', $cita)
             ->with('success', "La cita {$cita->codigo} fue reprogramada correctamente.");
+    }
+
+    public function cancelar(CancelarCitaRequest $request, Cita $cita): RedirectResponse
+    {
+        $cita = $this->citas->cancelar($cita, $request->validated('motivo_cancelacion'), $request->user());
+
+        return redirect()->route('citas.show', $cita)
+            ->with('success', "La cita {$cita->codigo} fue cancelada correctamente.");
     }
 
     /** Médicos activos que atienden una especialidad (para el formulario). */

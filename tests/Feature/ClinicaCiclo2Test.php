@@ -69,3 +69,30 @@ it('no permite reprogramar una cita en estado final', function () {
 
     expect($cita->fresh()->hora_inicio_corta)->toBe('09:00');
 });
+
+it('rechaza cancelar una cita sin motivo', function () {
+    $cita = crearCitaCiclo2();
+
+    $this->actingAs($this->recepcion)
+        ->post(route('citas.cancelar', $cita), ['motivo_cancelacion' => ''])
+        ->assertSessionHasErrors('motivo_cancelacion');
+
+    expect($cita->fresh()->estado)->toBe('programada');
+});
+
+it('cancela sin eliminar la cita y libera su horario', function () {
+    $cita = crearCitaCiclo2();
+
+    $this->actingAs($this->recepcion)
+        ->post(route('citas.cancelar', $cita), ['motivo_cancelacion' => 'El paciente solicitó cancelar'])
+        ->assertRedirect(route('citas.show', $cita));
+
+    expect($cita->fresh()->estado)->toBe('cancelada')
+        ->and($cita->fresh()->motivo_cancelacion)->toBe('El paciente solicitó cancelar')
+        ->and(Cita::count())->toBe(1)
+        ->and($cita->historial)->toHaveCount(1);
+
+    $nueva = crearCitaCiclo2();
+    expect($nueva->id)->not->toBe($cita->id)
+        ->and(Cita::count())->toBe(2);
+});

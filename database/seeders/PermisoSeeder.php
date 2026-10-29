@@ -24,13 +24,13 @@ class PermisoSeeder extends Seeder
             'medicos' => $crud,
             'especialidades' => $crud,
             'horarios' => $crud,
-            'citas' => array_merge($crud, ['reprogramar']),
+            'citas' => array_merge($crud, ['reprogramar', 'cancelar']),
             'bitacora' => ['mostrar'],
         ];
 
         $verbos = [
             'crear' => 'Crear', 'mostrar' => 'Ver', 'modificar' => 'Editar', 'eliminar' => 'Eliminar',
-            'reprogramar' => 'Reprogramar',
+            'reprogramar' => 'Reprogramar', 'cancelar' => 'Cancelar',
         ];
 
         foreach ($modulos as $modulo => $acciones) {
@@ -48,7 +48,7 @@ class PermisoSeeder extends Seeder
         // Recepcionista: pacientes y citas; en médicos, especialidades y horarios solo consulta
         $this->asignar('Recepcionista', $this->idsPara([
             'pacientes' => ['crear', 'mostrar', 'modificar'],
-            'citas' => ['crear', 'mostrar', 'reprogramar'],
+            'citas' => ['crear', 'mostrar', 'reprogramar', 'cancelar'],
             'medicos' => ['mostrar'],
             'especialidades' => ['mostrar'],
             'horarios' => ['mostrar'],

@@ -155,6 +155,33 @@ class CitaService
         }
     }
 
+    public function cancelar(Cita $cita, string $motivo, User $usuario): Cita
+    {
+        return DB::transaction(function () use ($cita, $motivo, $usuario) {
+            $cita = Cita::whereKey($cita->id)->lockForUpdate()->firstOrFail();
+
+            if (! in_array($cita->estado, ['programada', 'confirmada'], true)) {
+                $this->error('cita', 'Solo se pueden cancelar citas programadas o confirmadas.');
+            }
+
+            $estadoAnterior = $cita->estado;
+            $cita->update([
+                'estado' => 'cancelada',
+                'motivo_cancelacion' => $motivo,
+            ]);
+
+            HistorialEstadoCita::create([
+                'cita_id' => $cita->id,
+                'estado_anterior' => $estadoAnterior,
+                'estado_nuevo' => 'cancelada',
+                'user_id' => $usuario->id,
+                'observacion' => "Cancelación: {$motivo}",
+            ]);
+
+            return $cita->refresh();
+        });
+    }
+
     private function error(string $campo, string $mensaje): never
     {
         throw ValidationException::withMessages([$campo => $mensaje]);
