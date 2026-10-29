@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\CitaRequest;
+use App\Http\Requests\ReprogramarCitaRequest;
 use App\Models\Cita;
 use App\Models\Especialidad;
 use App\Models\Medico;
@@ -29,6 +30,7 @@ class CitaController extends Controller implements HasMiddleware
         return [
             new Middleware('permiso:citas,mostrar', only: ['index', 'show']),
             new Middleware('permiso:citas,crear', only: ['create', 'store', 'disponibilidad', 'medicosPorEspecialidad']),
+            new Middleware('permiso:citas,reprogramar', only: ['formReprogramar', 'reprogramar']),
         ];
     }
 
@@ -80,6 +82,28 @@ class CitaController extends Controller implements HasMiddleware
         return view('citas.show', compact('cita'));
     }
 
+    public function formReprogramar(Cita $cita): View
+    {
+        abort_unless(in_array($cita->estado, ['programada', 'confirmada'], true), 403);
+        $cita->load(['paciente', 'medico', 'especialidad']);
+
+        return view('citas.reprogramar', compact('cita'));
+    }
+
+    public function reprogramar(ReprogramarCitaRequest $request, Cita $cita): RedirectResponse
+    {
+        $cita = $this->citas->reprogramar(
+            $cita,
+            $request->validated('fecha'),
+            $request->validated('hora_inicio'),
+            $request->user(),
+            $request->validated('observacion'),
+        );
+
+        return redirect()->route('citas.show', $cita)
+            ->with('success', "La cita {$cita->codigo} fue reprogramada correctamente.");
+    }
+
     /** Médicos activos que atienden una especialidad (para el formulario). */
     public function medicosPorEspecialidad(Especialidad $especialidad): JsonResponse
     {
@@ -92,8 +116,20 @@ class CitaController extends Controller implements HasMiddleware
     /** Horarios del médico en una fecha: solo se muestran los disponibles (RF06). */
     public function disponibilidad(Request $request, Medico $medico): JsonResponse
     {
-        $request->validate(['fecha' => ['required', 'date', 'after_or_equal:today']]);
+        $datos = $request->validate([
+            'fecha' => ['required', 'date', 'after_or_equal:today'],
+            'excluir_cita_id' => ['nullable', 'integer', 'exists:citas,id'],
+        ]);
+        $excluirCitaId = $datos['excluir_cita_id'] ?? null;
 
-        return response()->json($this->agenda->bloques($medico, Carbon::parse($request->query('fecha'))));
+        if ($excluirCitaId) {
+            $cita = Cita::findOrFail($excluirCitaId);
+            abort_unless(
+                $cita->medico_id === $medico->id && in_array($cita->estado, ['programada', 'confirmada'], true),
+                403
+            );
+        }
+
+        return response()->json($this->agenda->bloques($medico, Carbon::parse($datos['fecha']), $excluirCitaId));
     }
 }

@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const raiz = document.getElementById('programar-cita');
     if (raiz) iniciarProgramarCita(raiz);
 
+    const reprogramar = document.getElementById('reprogramar-cita');
+    if (reprogramar) iniciarReprogramarCita(reprogramar);
+
     const formUsuario = document.getElementById('form-usuario');
     if (formUsuario) iniciarFormUsuario(formUsuario);
 });
@@ -85,6 +88,54 @@ function iniciarProgramarCita(raiz) {
     especialidad.addEventListener('change', cargarMedicos);
     medico.addEventListener('change', cargarHoras);
     fecha.addEventListener('change', cargarHoras);
+}
+
+function iniciarReprogramarCita(raiz) {
+    const fecha = raiz.querySelector('#fecha');
+    const horaInicio = raiz.querySelector('#hora_inicio');
+    const contenedor = raiz.querySelector('#bloques');
+    const guardar = raiz.querySelector('#btn-guardar');
+    const mensaje = raiz.querySelector('#msg-disponibilidad');
+    let peticion = 0;
+
+    async function cargarHoras() {
+        const actual = ++peticion;
+        horaInicio.value = '';
+        guardar.disabled = true;
+        contenedor.replaceChildren();
+        mensaje.textContent = 'Consultando disponibilidad...';
+
+        try {
+            const url = `${raiz.dataset.disponibilidad}?fecha=${encodeURIComponent(fecha.value)}&excluir_cita_id=${encodeURIComponent(raiz.dataset.cita)}`;
+            const respuesta = await fetch(url, { headers: { Accept: 'application/json' } });
+            if (!respuesta.ok) throw new Error('No fue posible consultar la disponibilidad.');
+            const bloques = await respuesta.json();
+            if (actual !== peticion) return;
+
+            mensaje.textContent = bloques.length ? 'Seleccione una hora disponible.' : 'El médico no atiende en esa fecha.';
+            bloques.forEach((bloque) => {
+                const boton = document.createElement('button');
+                boton.type = 'button';
+                boton.textContent = bloque.inicio;
+                boton.disabled = !bloque.libre;
+                boton.className = `w-24 rounded-md border py-2 text-sm font-semibold ${bloque.libre
+                    ? 'border-green-600 text-green-700 hover:bg-green-50'
+                    : 'cursor-not-allowed border-gray-300 bg-gray-100 text-gray-400 line-through'}`;
+                boton.addEventListener('click', () => {
+                    contenedor.querySelectorAll('button').forEach((otro) => otro.classList.remove('bg-green-600', 'text-white'));
+                    boton.classList.add('bg-green-600', 'text-white');
+                    horaInicio.value = bloque.inicio;
+                    guardar.disabled = false;
+                });
+                contenedor.appendChild(boton);
+            });
+        } catch (error) {
+            if (actual === peticion) mensaje.textContent = error.message;
+        }
+    }
+
+    fecha.addEventListener('change', cargarHoras);
+    cargarHoras();
 }
 
 function iniciarFormUsuario(raiz) {

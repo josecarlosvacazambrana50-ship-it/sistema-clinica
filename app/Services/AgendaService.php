@@ -16,7 +16,7 @@ class AgendaService
      *
      * @return array<int, array{inicio:string, fin:string, libre:bool}>
      */
-    public function bloques(Medico $medico, Carbon $fecha): array
+    public function bloques(Medico $medico, Carbon $fecha, ?int $excluirCitaId = null): array
     {
         // Un médico inactivo no recibe nuevas citas (RN04)
         if ($medico->estado !== 'activo') {
@@ -31,6 +31,7 @@ class AgendaService
         $ocupadas = Cita::where('medico_id', $medico->id)
             ->whereDate('fecha', $fecha->toDateString())
             ->ocupan()
+            ->when($excluirCitaId, fn ($q) => $q->whereKeyNot($excluirCitaId))
             ->get(['hora_inicio', 'hora_fin']);
 
         $ahora = now();
@@ -66,9 +67,9 @@ class AgendaService
         return $bloques;
     }
 
-    public function estaLibre(Medico $medico, Carbon $fecha, string $horaInicio, string $horaFin): bool
+    public function estaLibre(Medico $medico, Carbon $fecha, string $horaInicio, string $horaFin, ?int $excluirCitaId = null): bool
     {
-        foreach ($this->bloques($medico, $fecha) as $b) {
+        foreach ($this->bloques($medico, $fecha, $excluirCitaId) as $b) {
             if ($b['inicio'] === substr($horaInicio, 0, 5) && $b['fin'] === substr($horaFin, 0, 5)) {
                 return $b['libre'];
             }

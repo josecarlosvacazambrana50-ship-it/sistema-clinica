@@ -6,6 +6,11 @@
     <div class="py-8">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
             <div class="bg-white shadow-sm sm:rounded-lg p-4 sm:p-6">
+                @if (in_array($cita->estado, ['programada', 'confirmada'], true) && Auth::user()->tienePermiso('citas', 'reprogramar'))
+                    <a href="{{ route('citas.reprogramar.form', $cita) }}" class="inline-flex rounded-md bg-[#2F5597] px-4 py-2 text-sm text-white hover:bg-[#1F3864]">
+                        Reprogramar cita
+                    </a>
+                @endif
                 <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
                     <div><dt class="text-gray-500">Estado</dt><dd><x-estado :valor="$cita->estado" /></dd></div>
                     <div><dt class="text-gray-500">Fecha y hora</dt><dd class="font-medium">{{ $cita->fecha->format('d/m/Y') }} · {{ $cita->hora_inicio_corta }} – {{ $cita->hora_fin_corta }}</dd></div>

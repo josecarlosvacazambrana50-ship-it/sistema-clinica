@@ -59,6 +59,8 @@ Route::middleware('auth')->group(function () {
     // CU08 - Citas médicas
     Route::get('citas/medicos/{especialidad}', [CitaController::class, 'medicosPorEspecialidad'])->name('citas.medicos');
     Route::get('citas/disponibilidad/{medico}', [CitaController::class, 'disponibilidad'])->name('citas.disponibilidad');
+    Route::get('citas/{cita}/reprogramar', [CitaController::class, 'formReprogramar'])->name('citas.reprogramar.form');
+    Route::put('citas/{cita}/reprogramar', [CitaController::class, 'reprogramar'])->name('citas.reprogramar');
     Route::resource('citas', CitaController::class)->only(['index', 'create', 'store', 'show']);
 
     Route::get('bitacora', [BitacoraController::class, 'index'])
