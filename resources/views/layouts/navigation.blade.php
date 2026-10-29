@@ -2,6 +2,7 @@
         $items = [
         ['modulo' => null,             'ruta' => 'dashboard',          'activo' => 'dashboard',        'icono' => '🏠', 'texto' => 'Inicio'],
         ['modulo' => 'citas',          'ruta' => 'citas.index',        'activo' => 'citas.*',          'icono' => '📅', 'texto' => Auth::user()->esPaciente() ? 'Mis citas' : 'Citas médicas'],
+        ['modulo' => 'agenda',         'ruta' => 'agenda.index',       'activo' => 'agenda.*',         'icono' => '🗓️', 'texto' => 'Agenda médica'],
         ['modulo' => 'pacientes',      'ruta' => 'pacientes.index',    'activo' => 'pacientes.*',      'icono' => '👥', 'texto' => 'Pacientes'],
         ['modulo' => 'medicos',        'ruta' => 'medicos.index',      'activo' => 'medicos.*',        'icono' => '🩺', 'texto' => 'Médicos y horarios'],
         ['modulo' => 'especialidades', 'ruta' => 'especialidades.index','activo' => 'especialidades.*','icono' => '🏥', 'texto' => 'Especialidades'],

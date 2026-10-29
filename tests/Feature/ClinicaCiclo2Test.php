@@ -143,3 +143,30 @@ it('registra el cambio de estado en el historial', function () {
         ->and($cita->historial)->toHaveCount(1)
         ->and($cita->historial->first()->observacion)->toBe('Atención concluida');
 });
+
+it('filtra la agenda por médico, fecha y estado', function () {
+    $programada = crearCitaCiclo2(['estado' => 'programada']);
+    $confirmada = crearCitaCiclo2(['hora_inicio' => '09:30', 'hora_fin' => '10:00', 'estado' => 'confirmada']);
+
+    $this->actingAs($this->recepcion)
+        ->get(route('agenda.index', [
+            'medico_id' => $this->medico->id,
+            'fecha' => $this->lunes,
+            'estado' => 'confirmada',
+        ]))
+        ->assertOk()
+        ->assertSee($confirmada->codigo)
+        ->assertDontSee($programada->codigo);
+});
+
+it('fuerza a los médicos a consultar solo su propia agenda', function () {
+    $usuarioMedico = User::where('email', 'jperez@vidasalud.bo')->firstOrFail();
+    $otroMedico = Medico::where('nro_registro', 'MP-1002')->firstOrFail();
+    $cita = crearCitaCiclo2(['medico_id' => $otroMedico->id]);
+
+    $this->actingAs($usuarioMedico)
+        ->get(route('agenda.index', ['medico_id' => $otroMedico->id, 'fecha' => $this->lunes]))
+        ->assertOk()
+        ->assertSee('Sin citas programadas')
+        ->assertDontSee($cita->codigo);
+});

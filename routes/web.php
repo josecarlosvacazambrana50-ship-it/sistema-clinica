@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BitacoraController;
+use App\Http\Controllers\AgendaController;
 use App\Http\Controllers\CitaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EspecialidadController;
@@ -23,6 +24,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('verified')->name('dashboard');
+    Route::get('agenda', [AgendaController::class, 'index'])
+        ->middleware('permiso:agenda,ver')->name('agenda.index');
 
     // CU03 - Usuarios, roles y permisos
     Route::resource('usuarios', UsuarioController::class)->except(['show', 'destroy'])

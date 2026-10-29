@@ -5,12 +5,23 @@ namespace App\Services;
 use App\Models\Cita;
 use App\Models\Medico;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * Calcula los horarios disponibles de un médico (RF05, RF06).
  */
 class AgendaService
 {
+    public function agendaDelDia(int $medicoId, string $fecha, ?string $estado = null): Collection
+    {
+        return Cita::with(['paciente', 'medico', 'especialidad'])
+            ->where('medico_id', $medicoId)
+            ->whereDate('fecha', $fecha)
+            ->when($estado, fn ($q) => $q->where('estado', $estado))
+            ->orderBy('hora_inicio')
+            ->get();
+    }
+
     /**
      * Devuelve los bloques de atención de un médico en una fecha, indicando cuáles están libres.
      *
