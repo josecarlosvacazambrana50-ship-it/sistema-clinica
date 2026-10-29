@@ -24,13 +24,14 @@ class PermisoSeeder extends Seeder
             'medicos' => $crud,
             'especialidades' => $crud,
             'horarios' => $crud,
-            'citas' => array_merge($crud, ['reprogramar', 'cancelar']),
+            'citas' => array_merge($crud, ['reprogramar', 'cancelar', 'confirmar', 'atender']),
             'bitacora' => ['mostrar'],
         ];
 
         $verbos = [
             'crear' => 'Crear', 'mostrar' => 'Ver', 'modificar' => 'Editar', 'eliminar' => 'Eliminar',
             'reprogramar' => 'Reprogramar', 'cancelar' => 'Cancelar',
+            'confirmar' => 'Confirmar', 'atender' => 'Atender',
         ];
 
         foreach ($modulos as $modulo => $acciones) {
@@ -48,7 +49,7 @@ class PermisoSeeder extends Seeder
         // Recepcionista: pacientes y citas; en médicos, especialidades y horarios solo consulta
         $this->asignar('Recepcionista', $this->idsPara([
             'pacientes' => ['crear', 'mostrar', 'modificar'],
-            'citas' => ['crear', 'mostrar', 'reprogramar', 'cancelar'],
+            'citas' => ['crear', 'mostrar', 'reprogramar', 'cancelar', 'confirmar', 'atender'],
             'medicos' => ['mostrar'],
             'especialidades' => ['mostrar'],
             'horarios' => ['mostrar'],
@@ -56,7 +57,7 @@ class PermisoSeeder extends Seeder
 
         // Médico: solo su agenda (el código limita a sus propias citas)
         $this->asignar('Médico', $this->idsPara([
-            'citas' => ['mostrar'],
+            'citas' => ['mostrar', 'atender'],
             'pacientes' => ['mostrar'],
             'horarios' => ['mostrar'],
         ]));

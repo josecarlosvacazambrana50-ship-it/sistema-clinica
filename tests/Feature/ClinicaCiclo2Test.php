@@ -96,3 +96,50 @@ it('cancela sin eliminar la cita y libera su horario', function () {
     expect($nueva->id)->not->toBe($cita->id)
         ->and(Cita::count())->toBe(2);
 });
+
+it('rechaza marcar como atendida una cita cancelada', function () {
+    $cita = crearCitaCiclo2(['estado' => 'cancelada', 'motivo_cancelacion' => 'Anulada']);
+
+    $this->actingAs($this->recepcion)
+        ->post(route('citas.estado', $cita), ['estado' => 'atendida'])
+        ->assertSessionHasErrors('estado');
+
+    expect($cita->fresh()->estado)->toBe('cancelada');
+});
+
+it('rechaza registrar asistencia antes de la fecha de la cita', function () {
+    $cita = crearCitaCiclo2();
+
+    $this->actingAs($this->recepcion)
+        ->post(route('citas.estado', $cita), ['estado' => 'inasistencia'])
+        ->assertSessionHasErrors('estado');
+
+    expect($cita->fresh()->estado)->toBe('programada');
+});
+
+it('impide que un médico cambie el estado de la cita de otro médico', function () {
+    $cita = crearCitaCiclo2();
+    $usuarioMedico = User::where('email', 'jperez@vidasalud.bo')->firstOrFail();
+    $otroMedico = Medico::where('nro_registro', 'MP-1002')->firstOrFail();
+
+    $cita->update(['medico_id' => $otroMedico->id]);
+
+    $this->actingAs($usuarioMedico)
+        ->post(route('citas.estado', $cita), ['estado' => 'atendida'])
+        ->assertForbidden();
+
+    expect($cita->fresh()->estado)->toBe('programada');
+});
+
+it('registra el cambio de estado en el historial', function () {
+    $cita = crearCitaCiclo2();
+    $this->travelTo(now()->next('Monday')->startOfDay());
+
+    $this->actingAs($this->recepcion)
+        ->post(route('citas.estado', $cita), ['estado' => 'atendida', 'observacion' => 'Atención concluida'])
+        ->assertRedirect(route('citas.show', $cita));
+
+    expect($cita->fresh()->estado)->toBe('atendida')
+        ->and($cita->historial)->toHaveCount(1)
+        ->and($cita->historial->first()->observacion)->toBe('Atención concluida');
+});

@@ -62,6 +62,7 @@ Route::middleware('auth')->group(function () {
     Route::get('citas/{cita}/reprogramar', [CitaController::class, 'formReprogramar'])->name('citas.reprogramar.form');
     Route::put('citas/{cita}/reprogramar', [CitaController::class, 'reprogramar'])->name('citas.reprogramar');
     Route::post('citas/{cita}/cancelar', [CitaController::class, 'cancelar'])->name('citas.cancelar');
+    Route::post('citas/{cita}/estado', [CitaController::class, 'cambiarEstado'])->name('citas.estado');
     Route::resource('citas', CitaController::class)->only(['index', 'create', 'store', 'show']);
 
     Route::get('bitacora', [BitacoraController::class, 'index'])

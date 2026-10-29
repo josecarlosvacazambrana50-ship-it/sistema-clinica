@@ -182,6 +182,39 @@ class CitaService
         });
     }
 
+    public function cambiarEstado(Cita $cita, string $nuevoEstado, User $usuario, ?string $observacion = null): Cita
+    {
+        return DB::transaction(function () use ($cita, $nuevoEstado, $usuario, $observacion) {
+            $cita = Cita::whereKey($cita->id)->lockForUpdate()->firstOrFail();
+            $permitidos = Cita::TRANSICIONES[$cita->estado] ?? [];
+
+            if (! in_array($nuevoEstado, $permitidos, true)) {
+                $this->error('estado', 'El cambio de estado solicitado no está permitido.');
+            }
+
+            $permiso = $nuevoEstado === 'confirmada' ? 'confirmar' : 'atender';
+            abort_unless($usuario->tienePermiso('citas', $permiso), 403, 'No tienes permiso para cambiar el estado de esta cita.');
+            abort_if($usuario->esMedico() && $usuario->medico_id !== $cita->medico_id, 403, 'Solo puedes gestionar tus propias citas.');
+
+            if (in_array($nuevoEstado, ['atendida', 'inasistencia'], true) && $cita->fecha->isAfter(today())) {
+                $this->error('estado', 'La asistencia solo se puede registrar desde el día de la cita.');
+            }
+
+            $estadoAnterior = $cita->estado;
+            $cita->update(['estado' => $nuevoEstado]);
+
+            HistorialEstadoCita::create([
+                'cita_id' => $cita->id,
+                'estado_anterior' => $estadoAnterior,
+                'estado_nuevo' => $nuevoEstado,
+                'user_id' => $usuario->id,
+                'observacion' => $observacion,
+            ]);
+
+            return $cita->refresh();
+        });
+    }
+
     private function error(string $campo, string $mensaje): never
     {
         throw ValidationException::withMessages([$campo => $mensaje]);

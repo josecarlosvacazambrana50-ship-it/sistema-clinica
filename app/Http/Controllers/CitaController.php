@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\CitaRequest;
 use App\Http\Requests\CancelarCitaRequest;
+use App\Http\Requests\CambiarEstadoRequest;
 use App\Http\Requests\ReprogramarCitaRequest;
 use App\Models\Cita;
 use App\Models\Especialidad;
@@ -112,6 +113,19 @@ class CitaController extends Controller implements HasMiddleware
 
         return redirect()->route('citas.show', $cita)
             ->with('success', "La cita {$cita->codigo} fue cancelada correctamente.");
+    }
+
+    public function cambiarEstado(CambiarEstadoRequest $request, Cita $cita): RedirectResponse
+    {
+        $cita = $this->citas->cambiarEstado(
+            $cita,
+            $request->validated('estado'),
+            $request->user(),
+            $request->validated('observacion'),
+        );
+
+        return redirect()->route('citas.show', $cita)
+            ->with('success', "El estado de la cita {$cita->codigo} fue actualizado.");
     }
 
     /** Médicos activos que atienden una especialidad (para el formulario). */

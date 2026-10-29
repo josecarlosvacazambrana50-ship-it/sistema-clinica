@@ -22,6 +22,14 @@ class Cita extends Model
         'inasistencia' => 'Inasistencia',
     ];
 
+    public const TRANSICIONES = [
+        'programada' => ['confirmada', 'atendida', 'inasistencia', 'cancelada'],
+        'confirmada' => ['atendida', 'inasistencia', 'cancelada'],
+        'atendida' => [],
+        'cancelada' => [],
+        'inasistencia' => [],
+    ];
+
     protected function casts(): array
     {
         return ['fecha' => 'date'];

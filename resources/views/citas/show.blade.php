@@ -36,6 +36,23 @@
                         </div>
                     </div>
                 @endif
+                @foreach (\App\Models\Cita::TRANSICIONES[$cita->estado] as $estadoDestino)
+                    @php
+                        $permisoEstado = $estadoDestino === 'confirmada' ? 'confirmar' : 'atender';
+                        $puedeGestionarEstado = Auth::user()->tienePermiso('citas', $permisoEstado)
+                            && (!Auth::user()->esMedico() || Auth::user()->medico_id === $cita->medico_id)
+                            && (!in_array($estadoDestino, ['atendida', 'inasistencia'], true) || !$cita->fecha->isAfter(today()));
+                    @endphp
+                    @if ($puedeGestionarEstado)
+                        <form method="POST" action="{{ route('citas.estado', $cita) }}" class="mr-2 inline-block">
+                            @csrf
+                            <input type="hidden" name="estado" value="{{ $estadoDestino }}">
+                            <button type="submit" class="inline-flex rounded-md bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700">
+                                {{ ['confirmada' => 'Confirmar cita', 'atendida' => 'Marcar atendida', 'inasistencia' => 'Registrar inasistencia'][$estadoDestino] }}
+                            </button>
+                        </form>
+                    @endif
+                @endforeach
                 <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
                     <div><dt class="text-gray-500">Estado</dt><dd><x-estado :valor="$cita->estado" /></dd></div>
                     <div><dt class="text-gray-500">Fecha y hora</dt><dd class="font-medium">{{ $cita->fecha->format('d/m/Y') }} · {{ $cita->hora_inicio_corta }} – {{ $cita->hora_fin_corta }}</dd></div>
