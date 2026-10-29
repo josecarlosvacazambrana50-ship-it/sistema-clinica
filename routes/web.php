@@ -5,6 +5,7 @@ use App\Http\Controllers\AgendaController;
 use App\Http\Controllers\CitaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EspecialidadController;
+use App\Http\Controllers\HistorialController;
 use App\Http\Controllers\HorarioController;
 use App\Http\Controllers\MedicoController;
 use App\Http\Controllers\PacienteController;
@@ -55,6 +56,10 @@ Route::middleware('auth')->group(function () {
         ->name('horarios.estado');
 
     // CU07 - Pacientes
+    Route::get('mi-historial', [HistorialController::class, 'propio'])
+        ->middleware('permiso:historial,ver')->name('mi.historial');
+    Route::get('pacientes/{paciente}/historial', [HistorialController::class, 'dePaciente'])
+        ->middleware('permiso:historial,ver')->name('pacientes.historial');
     Route::resource('pacientes', PacienteController::class)->except(['destroy'])
         ->parameters(['pacientes' => 'paciente']);
     Route::patch('pacientes/{paciente}/estado', [PacienteController::class, 'cambiarEstado'])->name('pacientes.estado');

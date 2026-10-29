@@ -25,6 +25,7 @@ class PermisoSeeder extends Seeder
             'especialidades' => $crud,
             'horarios' => $crud,
             'agenda' => ['ver'],
+            'historial' => ['ver'],
             'citas' => array_merge($crud, ['reprogramar', 'cancelar', 'confirmar', 'atender']),
             'bitacora' => ['mostrar'],
         ];
@@ -34,6 +35,7 @@ class PermisoSeeder extends Seeder
             'reprogramar' => 'Reprogramar', 'cancelar' => 'Cancelar',
             'confirmar' => 'Confirmar', 'atender' => 'Atender',
             'ver' => 'Ver',
+            'historial' => 'Consultar',
         ];
 
         foreach ($modulos as $modulo => $acciones) {
@@ -56,6 +58,7 @@ class PermisoSeeder extends Seeder
             'especialidades' => ['mostrar'],
             'horarios' => ['mostrar'],
             'agenda' => ['ver'],
+            'historial' => ['ver'],
         ]));
 
         // Médico: solo su agenda (el código limita a sus propias citas)
@@ -69,6 +72,7 @@ class PermisoSeeder extends Seeder
         // Paciente: solo sus propias citas (el código limita a lo propio)
         $this->asignar('Paciente', $this->idsPara([
             'citas' => ['mostrar'],
+            'historial' => ['ver'],
         ]));
     }
 

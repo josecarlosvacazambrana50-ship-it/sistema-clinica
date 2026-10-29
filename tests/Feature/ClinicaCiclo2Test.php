@@ -170,3 +170,37 @@ it('fuerza a los médicos a consultar solo su propia agenda', function () {
         ->assertSee('Sin citas programadas')
         ->assertDontSee($cita->codigo);
 });
+
+it('permite al paciente ver solo su propio historial', function () {
+    $otraPersona = Paciente::create([
+        'ci' => '12345678', 'nombres' => 'Otra', 'apellidos' => 'Persona',
+        'fecha_nacimiento' => '1980-01-01', 'telefono' => '71234567',
+    ]);
+
+    $usuarioPaciente = User::where('email', 'maria@correo.com')->firstOrFail();
+    $this->actingAs($usuarioPaciente)
+        ->get(route('pacientes.historial', $otraPersona))
+        ->assertForbidden();
+});
+
+it('filtra el historial por estado y rango de fechas', function () {
+    $cita = crearCitaCiclo2(['estado' => 'confirmada']);
+
+    $this->actingAs($this->recepcion)
+        ->get(route('pacientes.historial', [
+            'paciente' => $this->paciente->id,
+            'estado' => 'confirmada',
+            'fecha_desde' => $this->lunes,
+            'fecha_hasta' => $this->lunes,
+        ]))
+        ->assertOk()
+        ->assertSee('Confirmada');
+
+    $this->actingAs($this->recepcion)
+        ->get(route('pacientes.historial', [
+            'paciente' => $this->paciente->id,
+            'fecha_desde' => $this->lunes,
+            'fecha_hasta' => now()->toDateString(),
+        ]))
+        ->assertSessionHasErrors('fecha_hasta');
+});

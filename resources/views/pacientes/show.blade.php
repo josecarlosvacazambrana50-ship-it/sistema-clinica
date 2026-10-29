@@ -28,7 +28,12 @@
             </div>
 
             <div class="bg-white shadow-sm sm:rounded-lg p-4 sm:p-6">
-                <h3 class="font-semibold text-[#1F3864] mb-3">Historial de citas</h3>
+                <div class="mb-3 flex items-center justify-between">
+                    <h3 class="font-semibold text-[#1F3864]">Historial de citas</h3>
+                    @can('permiso', ['historial', 'ver'])
+                        <a href="{{ route('pacientes.historial', $paciente) }}" class="text-sm text-indigo-600 hover:underline">Ver historial completo</a>
+                    @endcan
+                </div>
                 @include('citas._tabla', ['citas' => $citas])
             </div>
             <a href="{{ route('pacientes.index') }}" class="text-indigo-600 hover:underline text-sm">← Volver al listado</a>
