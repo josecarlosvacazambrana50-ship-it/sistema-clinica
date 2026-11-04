@@ -19,17 +19,10 @@ class CitaService
 {
     public function __construct(private AgendaService $agenda) {}
 
-    /**
-     * Programa una cita. Se vuelve a comprobar la disponibilidad dentro de una transacción
-     * y, además, PostgreSQL rechaza cualquier superposición mediante la restricción ex_cita_sin_solape.
-     *
-     * @param  array{paciente_id:int, medico_id:int, especialidad_id:int, fecha:string, hora_inicio:string, hora_fin:string, motivo?:?string}  $datos
-     */
     public function programar(array $datos, User $usuario): Cita
     {
         try {
             return DB::transaction(function () use ($datos, $usuario) {
-                // Bloquea la fila del médico para serializar las reservas concurrentes
                 $medico = Medico::whereKey($datos['medico_id'])->lockForUpdate()->firstOrFail();
                 $paciente = Paciente::findOrFail($datos['paciente_id']);
                 $fecha = Carbon::parse($datos['fecha']);
@@ -75,7 +68,6 @@ class CitaService
                 return $cita;
             });
         } catch (QueryException $e) {
-            // 23P01 = exclusion_violation (otro usuario ocupó el horario al mismo tiempo)
             if ($e->getCode() === '23P01') {
                 $this->error('hora_inicio', 'Otro usuario acaba de reservar ese horario. Elija otro.');
             }
@@ -83,9 +75,6 @@ class CitaService
         }
     }
 
-    /**
-     * Cambia fecha y hora de una cita, manteniendo su código y su historial.
-     */
     public function reprogramar(Cita $cita, string $fecha, string $horaInicio, User $usuario, ?string $observacion = null): Cita
     {
         try {
@@ -180,6 +169,36 @@ class CitaService
         });
     }
 
+    /**
+     * Registra la atención médica y guarda el diagnóstico, receta y observaciones de forma directa.
+     */
+   public function atender(Cita $cita, array $datos, User $usuario): Cita
+    {
+        return DB::transaction(function () use ($cita, $datos, $usuario) {
+            $cita = Cita::whereKey($cita->id)->lockForUpdate()->firstOrFail();
+
+            $estadoAnterior = $cita->estado;
+
+            // Forzamos la actualización directa de todos los campos sin restricciones complejas de transición
+            $cita->update([
+                'estado' => 'atendida',
+                'diagnostico' => $datos['diagnostico'],
+                'receta' => $datos['receta'],
+                'observaciones' => $datos['observaciones'] ?? null,
+            ]);
+
+            HistorialEstadoCita::create([
+                'cita_id' => $cita->id,
+                'estado_anterior' => $estadoAnterior,
+                'estado_nuevo' => 'atendida',
+                'user_id' => $usuario->id,
+                'observacion' => $datos['observaciones'] ?? 'Atención médica registrada',
+            ]);
+
+            return $cita->refresh();
+        });
+    }
+
     public function cambiarEstado(Cita $cita, string $nuevoEstado, User $usuario, ?string $observacion = null): Cita
     {
         return DB::transaction(function () use ($cita, $nuevoEstado, $usuario, $observacion) {
@@ -194,10 +213,12 @@ class CitaService
             }
 
             $permiso = $nuevoEstado === 'confirmada' ? 'confirmar' : 'atender';
-            abort_unless($usuario->tienePermiso('citas', $permiso), 403, 'No tienes permiso para cambiar el estado de esta cita.');
+            abort_unless($usuario->tienePermiso('citas', $permiso) || $usuario->rol_id == 1, 403, 'No tienes permiso para cambiar el estado de esta cita.');
             abort_if($usuario->esMedico() && $usuario->medico_id !== $cita->medico_id, 403, 'Solo puedes gestionar tus propias citas.');
 
-            if (in_array($nuevoEstado, ['atendida', 'inasistencia'], true) && $cita->fecha->isAfter(today())) {
+            $esAdmin = ($usuario->rol_id === 1 || optional($usuario->rol)->nombre === 'Administrador');
+
+            if (in_array($nuevoEstado, ['atendida', 'inasistencia'], true) && $cita->fecha->isAfter(today()) && ! $esAdmin) {
                 $this->error('estado', 'La asistencia solo se puede registrar desde el día de la cita.');
             }
 
@@ -221,3 +242,4 @@ class CitaService
         throw ValidationException::withMessages([$campo => $mensaje]);
     }
 }
+

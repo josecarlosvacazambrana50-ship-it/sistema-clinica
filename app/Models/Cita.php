@@ -10,8 +10,20 @@ use Illuminate\Database\Eloquent\Model;
 class Cita extends Model
 {
     protected $fillable = [
-        'codigo', 'paciente_id', 'medico_id', 'especialidad_id', 'registrada_por',
-        'fecha', 'hora_inicio', 'hora_fin', 'motivo', 'estado', 'motivo_cancelacion',
+        'codigo', 
+        'paciente_id', 
+        'medico_id', 
+        'especialidad_id', 
+        'registrada_por',
+        'fecha', 
+        'hora_inicio', 
+        'hora_fin', 
+        'motivo', 
+        'estado', 
+        'motivo_cancelacion',
+        'diagnostico',   // <-- Añadido
+        'receta',        // <-- Añadido
+        'observaciones', // <-- Añadido
     ];
 
     public const ESTADOS = [

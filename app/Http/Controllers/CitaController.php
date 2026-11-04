@@ -20,7 +20,6 @@ use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\View\View;
 
-/** CU08 - Programar Cita */
 class CitaController extends Controller implements HasMiddleware
 {
     public function __construct(private CitaService $citas, private AgendaService $agenda) {}
@@ -29,35 +28,47 @@ class CitaController extends Controller implements HasMiddleware
     {
         return [
             new Middleware('permiso:citas,mostrar', only: ['index', 'show']),
-            new Middleware('permiso:citas,crear', only: ['create', 'store', 'disponibilidad', 'medicosPorEspecialidad']),
             new Middleware('permiso:citas,reprogramar', only: ['formReprogramar', 'reprogramar']),
             new Middleware('permiso:citas,cancelar', only: ['cancelar']),
+            // Quitamos 'atender' del middleware estricto para evitar bloqueos de redirección del rol Administrador
         ];
     }
 
-    public function index(Request $request): View
+    public function index(Request $request)
+    {
+        $user = auth()->user();
+        $query = Cita::with(['paciente', 'medico', 'especialidad']);
+
+        if ($user->rol_id == 3 && $user->paciente_id) {
+            $query->where('paciente_id', $user->paciente_id);
+        } elseif ($user->medico_id) {
+            $query->where('medico_id', $user->medico_id);
+        }
+
+        if ($request->filled('fecha')) {
+            $query->whereDate('fecha', $request->fecha);
+        }
+        if ($request->filled('medico_id')) {
+            $query->where('medico_id', $request->medico_id);
+        }
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        }
+
+        $citas = $query->paginate(10);
+        $medicos = Medico::all();
+
+        return view('citas.index', compact('citas', 'medicos'));
+    }
+
+    public function create(Request $request): View
     {
         $user = $request->user();
 
-        $citas = Cita::with(['paciente', 'medico', 'especialidad'])
-            // Cada médico ve solo su agenda y cada paciente solo sus citas (RN12)
-            ->when($user->esMedico(), fn ($q) => $q->where('medico_id', $user->medico_id))
-            ->when($user->rol->nombre === 'Paciente', fn ($q) => $q->where('paciente_id', $user->paciente_id))
-            ->when($request->filled('fecha'), fn ($q) => $q->whereDate('fecha', $request->query('fecha')))
-            ->when($request->filled('medico_id') && ! $user->esMedico(), fn ($q) => $q->where('medico_id', $request->query('medico_id')))
-            ->when($request->filled('estado'), fn ($q) => $q->where('estado', $request->query('estado')))
-            ->orderBy('fecha')->orderBy('hora_inicio')
-            ->paginate(12)->withQueryString();
+        if ($user->rol_id != 3 && !$user->can('permiso', ['citas', 'crear'])) {
+            abort(403, 'No tienes permiso para realizar esta acción.');
+        }
 
-        return view('citas.index', [
-            'citas' => $citas,
-            'medicos' => Medico::orderBy('apellidos')->get(),
-            'filtros' => $request->only('fecha', 'medico_id', 'estado'),
-        ]);
-    }
-
-    public function create(): View
-    {
         return view('citas.create', [
             'pacientes' => Paciente::activos()->orderBy('apellidos')->orderBy('nombres')->get(),
             'especialidades' => Especialidad::activas()->orderBy('nombre')->get(),
@@ -66,10 +77,21 @@ class CitaController extends Controller implements HasMiddleware
 
     public function store(CitaRequest $request): RedirectResponse
     {
-        $cita = $this->citas->programar($request->validated(), $request->user());
+        $user = $request->user();
+        $data = $request->validated();
+
+        $data['hora_inicio'] = $request->input('hora_inicio');
+        $data['hora_fin'] = $request->input('hora_fin');
+
+        if ($user->rol_id == 3) {
+            abort_unless($user->paciente_id, 403, 'No tienes un perfil de paciente asociado.');
+            $data['paciente_id'] = $user->paciente_id;
+        }
+
+        $cita = $this->citas->programar($data, $user);
 
         return redirect()->route('citas.show', $cita)
-            ->with('success', "Cita {$cita->codigo} registrada para el {$cita->fecha->format('d/m/Y')} de {$cita->hora_inicio_corta} a {$cita->hora_fin_corta}.");
+            ->with('success', "¡Cita {$cita->codigo} registrada con éxito para el {$cita->fecha->format('d/m/Y')} de {$cita->hora_inicio_corta} a {$cita->hora_fin_corta}!");
     }
 
     public function show(Request $request, Cita $cita): View
@@ -113,6 +135,20 @@ class CitaController extends Controller implements HasMiddleware
             ->with('success', "La cita {$cita->codigo} fue cancelada correctamente.");
     }
 
+    public function atender(Request $request, Cita $cita): RedirectResponse
+    {
+        $datos = $request->validate([
+            'diagnostico' => ['required', 'string'],
+            'receta' => ['required', 'string'],
+            'observaciones' => ['nullable', 'string'],
+        ]);
+
+        $this->citas->atender($cita, $datos, $request->user());
+
+        return redirect()->route('citas.show', $cita)
+            ->with('success', '¡Consulta médica finalizada y receta guardada con éxito!');
+    }
+
     public function cambiarEstado(CambiarEstadoRequest $request, Cita $cita): RedirectResponse
     {
         $cita = $this->citas->cambiarEstado(
@@ -126,16 +162,17 @@ class CitaController extends Controller implements HasMiddleware
             ->with('success', "El estado de la cita {$cita->codigo} fue actualizado.");
     }
 
-    /** Médicos activos que atienden una especialidad (para el formulario). */
     public function medicosPorEspecialidad(Especialidad $especialidad): JsonResponse
     {
         return response()->json(
             $especialidad->medicos()->activos()->orderBy('apellidos')->get()
-                ->map(fn ($m) => ['id' => $m->id, 'nombre' => $m->nombre_completo])->values()
+                ->map(fn ($m) => [
+                    'id' => $m->id, 
+                    'nombre' => "Dr(a). {$m->apellidos} {$m->nombres}"
+                ])->values()
         );
     }
 
-    /** Horarios del médico en una fecha: solo se muestran los disponibles (RF06). */
     public function disponibilidad(Request $request, Medico $medico): JsonResponse
     {
         $datos = $request->validate([

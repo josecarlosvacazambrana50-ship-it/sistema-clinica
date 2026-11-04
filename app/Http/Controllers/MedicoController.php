@@ -18,7 +18,8 @@ class MedicoController extends Controller implements HasMiddleware
     public static function middleware(): array
     {
         return [
-            new Middleware('permiso:medicos,mostrar', only: ['index', 'show']),
+            // Quitamos 'index' de aquí para que los pacientes puedan ver el listado de médicos
+            new Middleware('permiso:medicos,mostrar', only: ['show']),
             new Middleware('permiso:medicos,crear', only: ['create', 'store']),
             new Middleware('permiso:medicos,modificar', only: ['edit', 'update', 'cambiarEstado']),
         ];
@@ -68,7 +69,7 @@ class MedicoController extends Controller implements HasMiddleware
     {
         $medico->load('especialidades');
 
-        return view('medicos.edit', [
+        return view('medico.edit', [ // o medicos.edit según tu estructura
             'medico'         => $medico,
             'especialidades' => Especialidad::activas()->orWhereIn('id', $medico->especialidades->pluck('id'))->orderBy('nombre')->get(),
         ]);

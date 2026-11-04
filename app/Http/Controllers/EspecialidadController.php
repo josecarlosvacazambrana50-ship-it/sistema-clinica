@@ -15,7 +15,7 @@ class EspecialidadController extends Controller implements HasMiddleware
     public static function middleware(): array
     {
         return [
-            new Middleware('permiso:especialidades,mostrar', only: ['index']),
+            // Eliminamos la restricción de 'permiso:especialidades,mostrar' en index para que los pacientes puedan consultarlas libremente
             new Middleware('permiso:especialidades,crear', only: ['create', 'store']),
             new Middleware('permiso:especialidades,modificar', only: ['edit', 'update', 'cambiarEstado']),
         ];

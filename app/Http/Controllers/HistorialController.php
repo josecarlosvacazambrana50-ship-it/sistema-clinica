@@ -2,49 +2,80 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Cita;
-use App\Models\Paciente;
 use Illuminate\Http\Request;
+use App\Models\Cita;
+use App\Services\CitaService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\View\View;
 
-class HistorialController extends Controller
+class HistorialController extends Controller implements HasMiddleware
 {
-    public function dePaciente(Request $request, Paciente $paciente): View
-    {
-        abort_if(
-            $request->user()->rol->nombre === 'Paciente' && $request->user()->paciente_id !== $paciente->id,
-            403
-        );
+    public function __construct(private CitaService $citasService) {}
 
-        return $this->mostrar($request, $paciente);
+    public static function middleware(): array
+    {
+        return [
+            // Permitimos el acceso libre a usuarios autenticados para que los pacientes vean su historial
+            new Middleware('auth'),
+        ];
     }
 
+    /**
+     * Muestra el historial médico y recetas del paciente autenticado.
+     */
     public function propio(Request $request): View
     {
-        return $this->mostrar($request, $request->user()->paciente);
+        $user = $request->user();
+
+        // Preparamos la consulta para listar las citas que ya fueron atendidas
+        $query = Cita::with(['medico', 'especialidad', 'historial'])
+            ->where('estado', 'atendida');
+
+        // Si es un paciente (rol_id = 3), filtramos estrictamente por su propio ID de paciente
+        if ($user->rol_id == 3) {
+            abort_unless($user->paciente_id, 403, 'No tienes un perfil de paciente asociado.');
+            $query->where('paciente_id', $user->paciente_id);
+        }
+
+        $citasAtendidas = $query->orderBy('fecha', 'desc')->paginate(10);
+
+        return view('historial.mi-historial', compact('citasAtendidas'));
     }
 
-    private function mostrar(Request $request, ?Paciente $paciente): View
+    public function store(Request $request, Cita $cita)
     {
-        $filtros = $request->validate([
-            'estado' => ['nullable', 'in:'.implode(',', array_keys(Cita::ESTADOS))],
-            'fecha_desde' => ['nullable', 'date'],
-            'fecha_hasta' => ['nullable', 'date', 'after_or_equal:fecha_desde'],
+        $request->validate([
+            'diagnostico' => 'required|string',
+            'receta' => 'required|string',
+            'observaciones' => 'nullable|string',
         ]);
 
-        $citas = $paciente
-            ? $paciente->citas()->with(['medico', 'especialidad', 'historial.usuario'])
-                ->when($filtros['estado'] ?? null, fn ($q, $estado) => $q->where('estado', $estado))
-                ->when($filtros['fecha_desde'] ?? null, fn ($q, $fecha) => $q->whereDate('fecha', '>=', $fecha))
-                ->when($filtros['fecha_hasta'] ?? null, fn ($q, $fecha) => $q->whereDate('fecha', '<=', $fecha))
-                ->orderByDesc('fecha')->orderByDesc('hora_inicio')
-                ->paginate(12)->withQueryString()
-            : Cita::whereRaw('1 = 0')->paginate(12);
+        try {
+            DB::beginTransaction();
 
-        return view('pacientes.historial', [
-            'paciente' => $paciente,
-            'citas' => $citas,
-            'filtros' => $request->only('estado', 'fecha_desde', 'fecha_hasta'),
-        ]);
+            // Consolidamos el diagnóstico, la receta y las notas en un formato claro para el historial
+            $detalleAtencion = "Diagnóstico: " . $request->diagnostico . 
+                               " | Receta: " . $request->receta . 
+                               ($request->filled('observaciones') ? " | Notas: " . $request->observaciones : "");
+
+            // Utilizamos tu servicio oficial para cambiar el estado a 'atendida' y registrar la atención
+            $this->citasService->cambiarEstado(
+                $cita,
+                'atendida',
+                $request->user(),
+                $detalleAtencion
+            );
+
+            DB::commit();
+
+            return redirect()->route('citas.index')
+                ->with('success', '¡Consulta médica finalizada y receta guardada con éxito!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors(['error' => 'Ocurrió un error al guardar: ' . $e->getMessage()]);
+        }
     }
 }

@@ -2,74 +2,102 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\HorarioRequest;
-use App\Models\HorarioAtencion;
 use App\Models\Medico;
+use App\Models\HorarioAtencion;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Routing\Controllers\HasMiddleware;
-use Illuminate\Routing\Controllers\Middleware;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-/** CU06 - Gestionar Horarios de Atención */
-class HorarioController extends Controller implements HasMiddleware
+class HorarioController extends Controller
 {
-    public static function middleware(): array
+    private function verificarAdmin(): void
     {
-        return [
-            new Middleware('permiso:horarios,mostrar', only: ['index']),
-            new Middleware('permiso:horarios,crear', only: ['store']),
-            new Middleware('permiso:horarios,modificar', only: ['update', 'cambiarEstado']),
-        ];
+        $usuario = auth()->user();
+        $esAdmin = ($usuario->rol_id == 1 || optional($usuario->rol)->nombre === 'Administrador');
+        
+        if (! $esAdmin) {
+            abort(403, 'No autorizado.');
+        }
     }
 
     public function index(Medico $medico): View
     {
-        return view('horarios.index', [
-            'medico'   => $medico->load('especialidades'),
-            'horarios' => $medico->horarios,
+        $medico->load('horarios');
+
+        return view('horarios.index', compact('medico'));
+    }
+
+    public function store(Request $request, Medico $medico): RedirectResponse
+    {
+        $this->verificarAdmin();
+
+        $validated = $request->validate([
+            'dia' => ['required'],
+            'hora_inicial' => ['required', 'date_format:H:i'],
+            'hora_final' => ['required', 'date_format:H:i', 'after:hora_inicial'],
+            'duracion' => ['required', 'integer', 'min:5'],
         ]);
+
+        $medico->horarios()->create([
+            'dia_semana' => $validated['dia'],
+            'hora_inicio' => $validated['hora_inicial'],
+            'hora_fin' => $validated['hora_final'],
+            'duracion_cita_min' => $validated['duracion'],
+            'estado' => 'activo',
+        ]);
+
+        return redirect()->route('horarios.index', $medico)
+            ->with('success', 'Horario de atención agregado correctamente.');
     }
 
-    public function store(HorarioRequest $request, Medico $medico): RedirectResponse
+    public function update(Request $request, Medico $medico, $horarioId): RedirectResponse
     {
-        $this->sinSuperposicion($medico, $request->validated());
-        $medico->horarios()->create($request->validated());
+        $this->verificarAdmin();
 
-        return back()->with('success', 'Horario agregado.');
+        $horario = $medico->horarios()->findOrFail($horarioId);
+
+        $validated = $request->validate([
+            'dia' => ['required'],
+            'hora_inicial' => ['required', 'date_format:H:i'],
+            'hora_final' => ['required', 'date_format:H:i', 'after:hora_inicial'],
+            'duracion' => ['required', 'integer', 'min:5'],
+        ]);
+
+        $horario->update([
+            'dia_semana' => $validated['dia'],
+            'hora_inicio' => $validated['hora_inicial'],
+            'hora_fin' => $validated['hora_final'],
+            'duracion_cita_min' => $validated['duracion'],
+        ]);
+
+        return redirect()->route('horarios.index', $medico)
+            ->with('success', 'Horario actualizado correctamente.');
     }
 
-    public function update(HorarioRequest $request, Medico $medico, HorarioAtencion $horario): RedirectResponse
+    public function cambiarEstado(Medico $medico, $horarioId): RedirectResponse
     {
-        abort_unless($horario->medico_id === $medico->id, 404);
-        $this->sinSuperposicion($medico, $request->validated(), $horario->id);
-        $horario->update($request->validated());
+        $this->verificarAdmin();
 
-        return back()->with('success', 'Horario actualizado.');
+        $horario = $medico->horarios()->findOrFail($horarioId);
+
+        $nuevoEstado = ($horario->estado === 'activo') ? 'inactivo' : 'activo';
+
+        $horario->update([
+            'estado' => $nuevoEstado,
+        ]);
+
+        return redirect()->route('horarios.index', $medico)
+            ->with('success', 'El estado del horario fue actualizado.');
     }
 
-    public function cambiarEstado(Medico $medico, HorarioAtencion $horario): RedirectResponse
+    public function destroy(Medico $medico, $horarioId): RedirectResponse
     {
-        abort_unless($horario->medico_id === $medico->id, 404);
-        $horario->update(['estado' => $horario->estado === 'activo' ? 'inactivo' : 'activo']);
+        $this->verificarAdmin();
 
-        return back()->with('success', 'Estado del horario actualizado.');
-    }
+        $horario = $medico->horarios()->findOrFail($horarioId);
+        $horario->delete();
 
-    /** Dos horarios del mismo médico y día no pueden superponerse. */
-    private function sinSuperposicion(Medico $medico, array $d, ?int $ignorar = null): void
-    {
-        $choca = $medico->horarios()->activos()
-            ->where('dia_semana', $d['dia_semana'])
-            ->when($ignorar, fn ($q) => $q->where('id', '!=', $ignorar))
-            ->where('hora_inicio', '<', $d['hora_fin'])
-            ->where('hora_fin', '>', $d['hora_inicio'])
-            ->exists();
-
-        if ($choca) {
-            throw ValidationException::withMessages([
-                'hora_inicio' => 'El horario se superpone con otro horario del mismo día.',
-            ]);
-        }
+        return redirect()->route('horarios.index', $medico)
+            ->with('success', 'El horario de atención fue eliminado correctamente.');
     }
 }

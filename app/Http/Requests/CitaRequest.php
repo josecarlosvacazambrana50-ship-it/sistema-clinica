@@ -13,8 +13,7 @@ class CitaRequest extends FormRequest
 
     public function rules(): array
     {
-        return [
-            'paciente_id'     => ['required', 'exists:pacientes,id'],
+        $rules = [
             'especialidad_id' => ['required', 'exists:especialidades,id'],
             'medico_id'       => ['required', 'exists:medicos,id'],
             'fecha'           => ['required', 'date', 'after_or_equal:today'],
@@ -22,6 +21,15 @@ class CitaRequest extends FormRequest
             'hora_fin'        => ['required', 'date_format:H:i', 'after:hora_inicio'],
             'motivo'          => ['nullable', 'string', 'max:200'],
         ];
+
+        // Si es un paciente registrado por la web (rol_id == 3), el paciente_id llega por input oculto
+        if (auth()->user() && auth()->user()->rol_id == 3) {
+            $rules['paciente_id'] = ['nullable', 'exists:pacientes,id'];
+        } else {
+            $rules['paciente_id'] = ['required', 'exists:pacientes,id'];
+        }
+
+        return $rules;
     }
 
     public function messages(): array

@@ -1,16 +1,89 @@
 @php
-        $items = [
-        ['modulo' => null,             'ruta' => 'dashboard',          'activo' => 'dashboard',        'icono' => '🏠', 'texto' => 'Inicio'],
-        ['modulo' => 'citas',          'ruta' => 'citas.index',        'activo' => 'citas.*',          'icono' => '📅', 'texto' => Auth::user()->esPaciente() ? 'Mis citas' : 'Citas médicas'],
-        ['modulo' => 'historial',      'ruta' => 'mi.historial',       'activo' => 'mi.historial',     'icono' => '🗂️', 'texto' => 'Mi historial'],
-        ['modulo' => 'reportes',       'ruta' => 'reportes.index',     'activo' => 'reportes.*',       'icono' => '📊', 'texto' => 'Reportes'],
-        ['modulo' => 'agenda',         'ruta' => 'agenda.index',       'activo' => 'agenda.*',         'icono' => '🗓️', 'texto' => 'Agenda médica'],
-        ['modulo' => 'pacientes',      'ruta' => 'pacientes.index',    'activo' => 'pacientes.*',      'icono' => '👥', 'texto' => 'Pacientes'],
-        ['modulo' => 'medicos',        'ruta' => 'medicos.index',      'activo' => 'medicos.*',        'icono' => '🩺', 'texto' => 'Médicos y horarios'],
-        ['modulo' => 'especialidades', 'ruta' => 'especialidades.index','activo' => 'especialidades.*','icono' => '🏥', 'texto' => 'Especialidades'],
-        ['modulo' => 'usuarios',       'ruta' => 'usuarios.index',     'activo' => 'usuarios.*',       'icono' => '🔑', 'texto' => 'Usuarios'],
-        ['modulo' => 'roles',          'ruta' => 'roles.index',        'activo' => 'roles.*',          'icono' => '🔐', 'texto' => 'Roles y permisos'],
-        ['modulo' => 'bitacora',       'ruta' => 'bitacora.index',     'activo' => 'bitacora.*',       'icono' => '📋', 'texto' => 'Bitácora'],
+    $user = Auth::user();
+    
+    // Identificación estricta de roles por nombre o ID real
+    $esAdmin = (optional($user->rol)->nombre === 'Administrador' || $user->rol_id == 1);
+    $esMedico = (optional($user->rol)->nombre === 'Médico' || $user->rol_id == 3);
+    $esPaciente = (optional($user->rol)->nombre === 'Paciente' || $user->rol_id == 4);
+
+    $items = [
+        [
+            'ruta' => 'dashboard', 
+            'activo' => 'dashboard', 
+            'icono' => '🏠', 
+            'texto' => 'Inicio', 
+            'roles' => ['Administrador', 'Médico', 'Paciente']
+        ],
+        [
+            'ruta' => 'citas.index', 
+            'activo' => 'citas.*', 
+            'icono' => '📅', 
+            'texto' => $esPaciente ? 'Mis citas' : 'Citas médicas', 
+            'roles' => ['Administrador', 'Médico', 'Paciente']
+        ],
+        [
+            'ruta' => 'mi.historial', 
+            'activo' => 'mi.historial', 
+            'icono' => '🗂️', 
+            'texto' => 'Mi historial', 
+            'roles' => ['Paciente']
+        ],
+        [
+            'ruta' => 'agenda.index', 
+            'activo' => 'agenda.*', 
+            'icono' => '🗓️', 
+            'texto' => 'Agenda médica', 
+            'roles' => ['Administrador', 'Médico']
+        ],
+        [
+            'ruta' => 'pacientes.index', 
+            'activo' => 'pacientes.*', 
+            'icono' => '👥', 
+            'texto' => 'Pacientes', 
+            'roles' => ['Administrador', 'Médico']
+        ],
+        [
+            'ruta' => 'medicos.index', 
+            'activo' => 'medicos.*', 
+            'icono' => '🩺', 
+            'texto' => 'Médicos y horarios', 
+            'roles' => ['Administrador', 'Médico', 'Paciente']
+        ],
+        [
+            'ruta' => 'especialidades.index', 
+            'activo' => 'especialidades.*', 
+            'icono' => '🏥', 
+            'texto' => 'Especialidades', 
+            'roles' => ['Administrador', 'Médico', 'Paciente']
+        ],
+        [
+            'ruta' => 'reportes.index', 
+            'activo' => 'reportes.*', 
+            'icono' => '📊', 
+            'texto' => 'Reportes', 
+            'roles' => ['Administrador']
+        ],
+        [
+            'ruta' => 'usuarios.index', 
+            'activo' => 'usuarios.*', 
+            'icono' => '🔑', 
+            'texto' => 'Usuarios', 
+            'roles' => ['Administrador']
+        ],
+        [
+            'ruta' => 'roles.index', 
+            'activo' => 'roles.*', 
+            'icono' => '🔐', 
+            'texto' => 'Roles y permisos', 
+            'roles' => ['Administrador']
+        ],
+        [
+            'ruta' => 'bitacora.index', 
+            'activo' => 'bitacora.*', 
+            'icono' => '📋', 
+            'texto' => 'Bitácora', 
+            'roles' => ['Administrador']
+        ],
     ];
 @endphp
 
@@ -49,11 +122,19 @@
 
         <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
             @foreach ($items as $item)
-                @if ($item['modulo'] === null || Auth::user()->can('permiso', [$item['modulo'], 'mostrar']))
+                @php
+                    // Determinamos si el usuario actual posee uno de los roles permitidos para este ítem
+                    $tieneRol = false;
+                    if ($esAdmin && in_array('Administrador', $item['roles'])) $tieneRol = true;
+                    if ($esMedico && in_array('Médico', $item['roles'])) $tieneRol = true;
+                    if ($esPaciente && in_array('Paciente', $item['roles'])) $tieneRol = true;
+                @endphp
+
+                @if ($tieneRol)
                     @php $activo = request()->routeIs($item['activo']); @endphp
                     <a href="{{ route($item['ruta']) }}"
                        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition
-                              {{ $activo ? 'bg-white text-gray-900' : 'text-gray-300 hover:bg-[#2F5597] hover:text-white' }}">
+                            {{ $activo ? 'bg-white text-gray-900' : 'text-gray-300 hover:bg-[#2F5597] hover:text-white' }}">
                         <span class="w-6 text-center text-lg leading-none">{{ $item['icono'] }}</span>
                         <span>{{ $item['texto'] }}</span>
                     </a>
@@ -64,13 +145,14 @@
         <!-- Usuario, perfil y cerrar sesión -->
         <div class="shrink-0 border-t border-[#35508a] px-3 py-4 space-y-1">
             <div class="px-3 pb-2">
-                <div class="text-sm font-medium text-white truncate">{{ Auth::user()->name }}</div>
-                <div class="text-xs text-gray-400 truncate">{{ Auth::user()->email }}</div>
+                <div class="text-sm font-medium text-white truncate">{{ $user->name }}</div>
+                <div class="text-xs text-gray-400 truncate">{{ $user->email }}</div>
             </div>
 
-            <a href="{{ Auth::user()->rol->nombre === 'Paciente' ? route('perfil.paciente.show') : route('profile.edit') }}"
+            <!-- Enlace seguro al perfil según el rol -->
+            <a href="{{ $esPaciente ? route('perfil.paciente.show') : route('profile.edit') }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition
-                      {{ request()->routeIs('profile.*') ? 'bg-white text-gray-900' : 'text-gray-300 hover:bg-[#2F5597] hover:text-white' }}">
+                     {{ request()->routeIs('profile.*') || request()->routeIs('perfil.paciente.*') ? 'bg-white text-gray-900' : 'text-gray-300 hover:bg-[#2F5597] hover:text-white' }}">
                 <span class="w-6 text-center text-lg leading-none">⚙️</span>
                 <span>Mi perfil</span>
             </a>

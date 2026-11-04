@@ -1,78 +1,144 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">Cita {{ $cita->codigo }}</h2>
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            {{ __('Detalle de la Cita Médica') }}
+        </h2>
     </x-slot>
 
-    <div class="py-8">
-        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            <div class="bg-white shadow-sm sm:rounded-lg p-4 sm:p-6">
-                @if (in_array($cita->estado, ['programada', 'confirmada'], true) && Auth::user()->tienePermiso('citas', 'reprogramar'))
-                    <a href="{{ route('citas.reprogramar.form', $cita) }}" class="inline-flex rounded-md bg-[#2F5597] px-4 py-2 text-sm text-white hover:bg-[#1F3864]">
-                        Reprogramar cita
-                    </a>
-                @endif
-                @if (in_array($cita->estado, ['programada', 'confirmada'], true) && Auth::user()->tienePermiso('citas', 'cancelar'))
-                    <div x-data="{ open: @js($errors->has('motivo_cancelacion')) }" class="inline-block">
-                        <button type="button" @click="open = true" class="ml-2 inline-flex rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700">
-                            Cancelar cita
-                        </button>
-                        <div x-show="open" x-cloak @keydown.escape.window="open = false"
-                            class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="modal-cancelar-titulo">
-                            <section @click.outside="open = false" class="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
-                                <h3 id="modal-cancelar-titulo" class="text-lg font-semibold text-gray-900">Cancelar cita {{ $cita->codigo }}</h3>
-                                <p class="mt-2 text-sm text-gray-600">La cita permanecerá en el historial y el horario quedará disponible.</p>
-                                <form method="POST" action="{{ route('citas.cancelar', $cita) }}" data-validar class="mt-4">
-                                    @csrf
-                                    <label for="motivo_cancelacion" class="block text-sm font-medium text-gray-700">Motivo de cancelación *</label>
-                                    <textarea id="motivo_cancelacion" name="motivo_cancelacion" required maxlength="200" rows="3"
-                                        class="mt-1 block w-full rounded-md border-gray-300 text-sm">{{ old('motivo_cancelacion') }}</textarea>
-                                    <x-input-error :messages="$errors->get('motivo_cancelacion')" class="mt-1" />
-                                    <div class="mt-4 flex justify-end gap-2">
-                                        <button type="button" @click="open = false" class="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700">Volver</button>
-                                        <button type="submit" class="rounded-md bg-red-600 px-4 py-2 text-sm text-white">Confirmar cancelación</button>
-                                    </div>
-                                </form>
-                            </section>
-                        </div>
+    <div class="py-12">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 text-gray-900">
+                
+                <!-- Mensajes de Error o Éxito -->
+                @if ($errors->any())
+                    <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+                        <ul>
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
                     </div>
                 @endif
-                @foreach (array_diff(\App\Models\Cita::TRANSICIONES[$cita->estado], ['cancelada']) as $estadoDestino)
-                    @php
-                        $permisoEstado = $estadoDestino === 'confirmada' ? 'confirmar' : 'atender';
-                        $puedeGestionarEstado = Auth::user()->tienePermiso('citas', $permisoEstado)
-                            && (!Auth::user()->esMedico() || Auth::user()->medico_id === $cita->medico_id)
-                            && (!in_array($estadoDestino, ['atendida', 'inasistencia'], true) || !$cita->fecha->isAfter(today()));
-                    @endphp
-                    @if ($puedeGestionarEstado)
-                        <form method="POST" action="{{ route('citas.estado', $cita) }}" class="mr-2 inline-block">
-                            @csrf
-                            <input type="hidden" name="estado" value="{{ $estadoDestino }}">
-                            <button type="submit" class="inline-flex rounded-md bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700">
-                                {{ ['confirmada' => 'Confirmar cita', 'atendida' => 'Marcar atendida', 'inasistencia' => 'Registrar inasistencia'][$estadoDestino] }}
-                            </button>
-                        </form>
-                    @endif
-                @endforeach
-                <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                    <div><dt class="text-gray-500">Estado</dt><dd><x-estado :valor="$cita->estado" /></dd></div>
-                    <div><dt class="text-gray-500">Fecha y hora</dt><dd class="font-medium">{{ $cita->fecha->format('d/m/Y') }} · {{ $cita->hora_inicio_corta }} – {{ $cita->hora_fin_corta }}</dd></div>
-                    <div><dt class="text-gray-500">Paciente</dt><dd class="font-medium">{{ $cita->paciente->nombre_completo }} (CI {{ $cita->paciente->ci }})</dd></div>
-                    <div><dt class="text-gray-500">Médico</dt><dd class="font-medium">Dr(a). {{ $cita->medico->nombre_completo }}</dd></div>
-                    <div><dt class="text-gray-500">Especialidad</dt><dd class="font-medium">{{ $cita->especialidad->nombre }}</dd></div>
-                    <div><dt class="text-gray-500">Motivo</dt><dd class="font-medium">{{ $cita->motivo ?: '—' }}</dd></div>
-                    <div><dt class="text-gray-500">Registrada por</dt><dd class="font-medium">{{ $cita->registradaPor->email }} el {{ $cita->created_at->format('d/m/Y H:i') }}</dd></div>
-                </dl>
-            </div>
 
-            <div class="bg-white shadow-sm sm:rounded-lg p-4 sm:p-6">
-                <h3 class="font-semibold text-[#1F3864] mb-3">Historial de estados</h3>
-                <ul class="text-sm divide-y">
-                    @foreach ($cita->historial as $h)
-                        <li class="py-2 flex justify-between"><span>{{ ucfirst($h->estado_nuevo) }} — {{ $h->observacion }}</span><span class="text-gray-500">{{ $h->created_at->format('d/m/Y H:i') }} · {{ $h->usuario->email }}</span></li>
-                    @endforeach
-                </ul>
+                @if (session('success'))
+                    <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
+                        {{ session('success') }}
+                    </div>
+                @endif
+
+                <!-- Información General de la Cita -->
+                <div class="mb-6 border-b pb-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-lg font-medium text-gray-900">Información de la Consulta</h3>
+                        
+                        {{-- BOTÓN DE CANCELAR CITA --}}
+                        @if(in_array($cita->estado, ['programada', 'confirmada']))
+                            <form action="{{ route('citas.cancelar', $cita->id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de que deseas cancelar esta cita médica?');">
+                                @csrf
+                                <input type="hidden" name="motivo_cancelacion" value="Cancelada desde el detalle de la cita">
+                                <button type="submit" class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded transition">
+                                    Cancelar Cita
+                                </button>
+                            </form>
+                        @endif
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <p><strong>Código:</strong> {{ $cita->codigo ?? 'N/D' }}</p>
+                        <p><strong>Fecha:</strong> {{ $cita->fecha ? $cita->fecha->format('d/m/Y') : 'N/D' }}</p>
+                        <p><strong>Hora:</strong> {{ isset($cita->hora_inicio) ? substr($cita->hora_inicio, 0, 5) : 'N/D' }}</p>
+                        <p><strong>Paciente:</strong> {{ trim(($cita->paciente->nombres ?? '') . ' ' . ($cita->paciente->apellidos ?? '')) ?: 'N/D' }}</p>
+                        <p><strong>Médico:</strong> {{ $cita->medico->nombre_completo ?? trim(($cita->medico->nombres ?? '') . ' ' . ($cita->medico->apellidos ?? '')) ?: 'N/D' }}</p>
+                        <p><strong>Estado:</strong> <span class="px-2 py-1 text-xs rounded bg-gray-200 uppercase font-semibold">{{ $cita->estado ?? 'Pendiente' }}</span></p>
+                    </div>
+                </div>
+
+                @php
+                    $user = auth()->user();
+                    $esPaciente = ($user->rol_id == 3 || optional($user->rol)->nombre === 'Paciente');
+                    $esAdmin = ($user->rol_id == 1 || optional($user->rol)->nombre === 'Administrador' || $user->can('permiso', ['citas', 'atender']));
+                    $esAtendida = in_array($cita->estado, ['atendida', 'finalizada']);
+                    $esDiaDeCita = $cita->fecha ? ($cita->fecha->isToday() || $cita->fecha->isPast()) : false;
+                @endphp
+
+                {{-- SI LA CITA YA FUE ATENDIDA --}}
+                @if($esAtendida)
+                    <div class="p-6 bg-gray-50 shadow-sm rounded-lg mt-6 border">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Atención Médica y Diagnóstico (Registrado)</h3>
+                        
+                        <div class="mb-4">
+                            <label class="block font-medium text-sm text-gray-700">Diagnóstico</label>
+                            <p class="mt-1 p-3 bg-white rounded-md border border-gray-200 text-gray-800">{{ $cita->diagnostico ?? 'Sin diagnóstico registrado.' }}</p>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block font-medium text-sm text-gray-700">Receta y Medicamentos</label>
+                            <p class="mt-1 p-3 bg-white rounded-md border border-gray-200 text-gray-800">{{ $cita->receta ?? 'Sin receta registrada.' }}</p>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block font-medium text-sm text-gray-700">Notas de Evolución y Observaciones</label>
+                            <p class="mt-1 p-3 bg-white rounded-md border border-gray-200 text-gray-800">{{ $cita->observaciones ?? 'Sin observaciones.' }}</p>
+                        </div>
+                    </div>
+
+                {{-- SI LA CITA NO HA SIDO ATENDIDA AÚN --}}
+                @else
+                    @if($esPaciente)
+                        <div class="p-6 bg-blue-50 border-l-4 border-blue-400 rounded-lg mt-6">
+                            <p class="text-sm text-blue-700 font-medium">
+                                Tu cita se encuentra en estado <strong>{{ $cita->estado }}</strong>. Los detalles del diagnóstico y la receta médica aparecerán aquí una vez que el médico te atienda en el consultorio.
+                            </p>
+                        </div>
+                    @else
+                        @if($esAdmin || $esDiaDeCita)
+                            <div class="p-6 bg-gray-50 shadow-sm rounded-lg mt-6 border">
+                                <h3 class="text-lg font-medium text-gray-900 mb-4">Atención Médica y Diagnóstico</h3>
+
+                                <form action="{{ route('citas.atender', $cita->id) }}" method="POST">
+                                    @csrf
+
+                                    <!-- Diagnóstico -->
+                                    <div class="mb-4">
+                                        <label for="diagnostico" class="block font-medium text-sm text-gray-700">Diagnóstico</label>
+                                        <textarea name="diagnostico" id="diagnostico" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>{{ old('diagnostico', $cita->diagnostico) }}</textarea>
+                                    </div>
+
+                                    <!-- Receta Médica -->
+                                    <div class="mb-4">
+                                        <label for="receta" class="block font-medium text-sm text-gray-700">Receta y Medicamentos</label>
+                                        <textarea name="receta" id="receta" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>{{ old('receta', $cita->receta) }}</textarea>
+                                    </div>
+
+                                    <!-- Notas de Evolución / Observaciones -->
+                                    <div class="mb-4">
+                                        <label for="observaciones" class="block font-medium text-sm text-gray-700">Notas de Evolución y Observaciones</label>
+                                        <textarea name="observaciones" id="observaciones" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('observaciones', $cita->observaciones) }}</textarea>
+                                    </div>
+
+                                    <div class="flex justify-end">
+                                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition ease-in-out duration-150">
+                                            Finalizar y Guardar Consulta
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        @else
+                            <div class="p-6 bg-amber-50 border-l-4 border-amber-400 rounded-lg mt-6">
+                                <p class="text-sm text-amber-800 font-medium">
+                                    Esta cita está programada para el <strong>{{ $cita->fecha->format('d/m/Y') }}</strong>. El formulario de atención médica se habilitará el día de la consulta.
+                                </p>
+                            </div>
+                        @endif
+                    @endif
+                @endif
+
+                <!-- Botón de Retorno -->
+                <div class="mt-6">
+                    <a href="{{ route('citas.index') }}" class="text-indigo-600 hover:text-indigo-900 font-medium">&larr; Volver al listado de citas</a>
+                </div>
+
             </div>
-            <a href="{{ route('citas.index') }}" class="text-indigo-600 hover:underline text-sm">← Volver al listado</a>
         </div>
     </div>
 </x-app-layout>

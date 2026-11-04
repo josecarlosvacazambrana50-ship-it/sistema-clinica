@@ -11,9 +11,24 @@ class HorarioAtencion extends Model
 {
     protected $table = 'horarios_atencion';
 
-    protected $fillable = ['medico_id', 'dia_semana', 'hora_inicio', 'hora_fin', 'duracion_cita_min', 'estado'];
+    protected $fillable = [
+        'medico_id',
+        'dia_semana',
+        'hora_inicio',
+        'hora_fin',
+        'duracion_cita_min',
+        'estado'
+    ];
 
-    public const DIAS = [1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles', 4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado', 7 => 'Domingo'];
+    public const DIAS = [
+        1 => 'Lunes', 
+        2 => 'Martes', 
+        3 => 'Miércoles', 
+        4 => 'Jueves', 
+        5 => 'Viernes', 
+        6 => 'Sábado', 
+        7 => 'Domingo'
+    ];
 
     public const DURACIONES = [15, 20, 30, 45, 60];
 

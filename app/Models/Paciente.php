@@ -20,6 +20,26 @@ class Paciente extends Model
         return ['fecha_nacimiento' => 'date'];
     }
 
+    /**
+     * Evento ejecutado al inicializar el modelo para la creación automática de códigos.
+     */
+    protected static function booted()
+    {
+        static::creating(function ($paciente) {
+            if (empty($paciente->codigo)) {
+                $ultimoPaciente = self::latest('id')->first();
+                
+                if ($ultimoPaciente && $ultimoPaciente->codigo) {
+                    $numero = intval(str_replace('PAC-', '', $ultimoPaciente->codigo)) + 1;
+                } else {
+                    $numero = 1;
+                }
+
+                $paciente->codigo = 'PAC-' . str_pad($numero, 4, '0', STR_PAD_LEFT);
+            }
+        });
+    }
+
     public function getNombreCompletoAttribute(): string
     {
         return trim($this->apellidos . ', ' . $this->nombres);
