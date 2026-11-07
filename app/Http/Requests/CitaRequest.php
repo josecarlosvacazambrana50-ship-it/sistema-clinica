@@ -20,6 +20,8 @@ class CitaRequest extends FormRequest
             'hora_inicio'     => ['required', 'date_format:H:i'],
             'hora_fin'        => ['required', 'date_format:H:i', 'after:hora_inicio'],
             'motivo'          => ['nullable', 'string', 'max:200'],
+            'metodo_pago'     => ['nullable', 'string', 'in:QR,Tarjeta'],
+            'estado_pago'     => ['nullable', 'string'],
         ];
 
         // Si es un paciente registrado por la web (rol_id == 3), el paciente_id llega por input oculto
@@ -29,7 +31,7 @@ class CitaRequest extends FormRequest
             $rules['paciente_id'] = ['required', 'exists:pacientes,id'];
         }
 
-        return $rules;
+        return $rules; // <-- Aquí estaba el error (faltaba el símbolo $)
     }
 
     public function messages(): array

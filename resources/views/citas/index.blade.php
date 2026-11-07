@@ -66,6 +66,7 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Médico</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Especialidad</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pago</th>
                                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                             </tr>
                         </thead>
@@ -74,7 +75,7 @@
                                 <tr>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $cita->codigo }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ optional($cita->fecha)->format('d/m/Y') ?? $cita->fecha }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $cita->hora_inicio_corta ?? $cita->hora_inicio }} - {{ $cita->hora_fin_corta ?? $cita->hora_fin }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $cita->hora_inicio_corta ?? substr($cita->hora_inicio, 0, 5) }} - {{ $cita->hora_fin_corta ?? substr($cita->hora_fin, 0, 5) }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $cita->paciente->nombres ?? 'N/D' }} {{ $cita->paciente->apellidos ?? '' }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Dr(a). {{ $cita->medico->nombres ?? 'N/D' }} {{ $cita->medico->apellidos ?? '' }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $cita->especialidad->nombre ?? 'N/D' }}</td>
@@ -83,13 +84,24 @@
                                             {{ ucfirst($cita->estado) }}
                                         </span>
                                     </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        @if($cita->metodo_pago)
+                                            <span class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                ✓ Pagado ({{ $cita->metodo_pago }})
+                                            </span>
+                                        @else
+                                            <span class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-600">
+                                                Registrado
+                                            </span>
+                                        @endif
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <a href="{{ route('citas.show', $cita->id) }}" class="text-indigo-600 hover:text-indigo-900">Ver</a>
+                                        <a href="{{ route('citas.show', $cita->id) }}" class="text-indigo-600 hover:text-indigo-900 font-semibold">Ver</a>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="px-6 py-4 text-center text-sm text-gray-500">
+                                    <td colspan="9" class="px-6 py-4 text-center text-sm text-gray-500">
                                         No hay citas registradas.
                                     </td>
                                 </tr>

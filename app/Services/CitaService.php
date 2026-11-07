@@ -54,6 +54,8 @@ class CitaService
                     'hora_fin' => $datos['hora_fin'],
                     'motivo' => $datos['motivo'] ?? null,
                     'estado' => 'programada',
+                    'metodo_pago' => $datos['metodo_pago'] ?? 'QR',
+                    'estado_pago' => $datos['estado_pago'] ?? 'Pagado',
                 ]);
 
                 $cita->update(['codigo' => 'CM-'.str_pad((string) $cita->id, 4, '0', STR_PAD_LEFT)]);
@@ -62,7 +64,7 @@ class CitaService
                     'cita_id' => $cita->id,
                     'estado_nuevo' => 'programada',
                     'user_id' => $usuario->id,
-                    'observacion' => 'Cita registrada',
+                    'observacion' => 'Cita registrada con pago vía ' . ($datos['metodo_pago'] ?? 'QR'),
                 ]);
 
                 return $cita;
@@ -151,6 +153,12 @@ class CitaService
                 $this->error('cita', 'Solo se pueden cancelar citas programadas o confirmadas.');
             }
 
+            // 👇 POLÍTICA DE CANCELACIÓN HASTA 24 HORAS ANTES
+            $fechaHoraCita = Carbon::parse($cita->fecha->format('Y-m-d') . ' ' . $cita->hora_inicio);
+            if (now()->diffInHours($fechaHoraCita, false) < 24 && $usuario->rol_id != 1) {
+                $this->error('cita', 'Política de la clínica: Las cancelaciones deben realizarse con al menos 24 horas de anticipación.');
+            }
+
             $estadoAnterior = $cita->estado;
             $cita->update([
                 'estado' => 'cancelada',
@@ -162,24 +170,19 @@ class CitaService
                 'estado_anterior' => $estadoAnterior,
                 'estado_nuevo' => 'cancelada',
                 'user_id' => $usuario->id,
-                'observacion' => "Cancelación: {$motivo}",
+                'observacion' => "Cancelación bajo política de la clínica: {$motivo}",
             ]);
 
             return $cita->refresh();
         });
     }
 
-    /**
-     * Registra la atención médica y guarda el diagnóstico, receta y observaciones de forma directa.
-     */
-   public function atender(Cita $cita, array $datos, User $usuario): Cita
+    public function atender(Cita $cita, array $datos, User $usuario): Cita
     {
         return DB::transaction(function () use ($cita, $datos, $usuario) {
             $cita = Cita::whereKey($cita->id)->lockForUpdate()->firstOrFail();
-
             $estadoAnterior = $cita->estado;
 
-            // Forzamos la actualización directa de todos los campos sin restricciones complejas de transición
             $cita->update([
                 'estado' => 'atendida',
                 'diagnostico' => $datos['diagnostico'],
@@ -242,4 +245,3 @@ class CitaService
         throw ValidationException::withMessages([$campo => $mensaje]);
     }
 }
-

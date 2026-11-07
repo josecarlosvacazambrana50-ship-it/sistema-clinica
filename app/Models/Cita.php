@@ -21,9 +21,11 @@ class Cita extends Model
         'motivo', 
         'estado', 
         'motivo_cancelacion',
-        'diagnostico',   // <-- Añadido
-        'receta',        // <-- Añadido
-        'observaciones', // <-- Añadido
+        'diagnostico',   
+        'receta',        
+        'observaciones', 
+        'estado_pago',   // <-- Añadido para la simulación de pago
+        'metodo_pago',   // <-- Añadido para la simulación de pago
     ];
 
     public const ESTADOS = [

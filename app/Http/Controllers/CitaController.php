@@ -30,7 +30,6 @@ class CitaController extends Controller implements HasMiddleware
             new Middleware('permiso:citas,mostrar', only: ['index', 'show']),
             new Middleware('permiso:citas,reprogramar', only: ['formReprogramar', 'reprogramar']),
             new Middleware('permiso:citas,cancelar', only: ['cancelar']),
-            // Quitamos 'atender' del middleware estricto para evitar bloqueos de redirección del rol Administrador
         ];
     }
 
@@ -83,6 +82,10 @@ class CitaController extends Controller implements HasMiddleware
         $data['hora_inicio'] = $request->input('hora_inicio');
         $data['hora_fin'] = $request->input('hora_fin');
 
+        // Captura explícita de la pasarela de pago simulada
+        $data['metodo_pago'] = $request->input('metodo_pago', 'QR');
+        $data['estado_pago'] = $request->input('estado_pago', 'Pagado');
+
         if ($user->rol_id == 3) {
             abort_unless($user->paciente_id, 403, 'No tienes un perfil de paciente asociado.');
             $data['paciente_id'] = $user->paciente_id;
@@ -91,7 +94,7 @@ class CitaController extends Controller implements HasMiddleware
         $cita = $this->citas->programar($data, $user);
 
         return redirect()->route('citas.show', $cita)
-            ->with('success', "¡Cita {$cita->codigo} registrada con éxito para el {$cita->fecha->format('d/m/Y')} de {$cita->hora_inicio_corta} a {$cita->hora_fin_corta}!");
+            ->with('success', "¡Cita {$cita->codigo} registrada y pagada con éxito vía {$cita->metodo_pago}!");
     }
 
     public function show(Request $request, Cita $cita): View
@@ -165,7 +168,7 @@ class CitaController extends Controller implements HasMiddleware
     public function medicosPorEspecialidad(Especialidad $especialidad): JsonResponse
     {
         return response()->json(
-            $especialidad->medicos()->activos()->orderBy('apellidos')->get()
+            $especialidad->medicos()->activos()->orderBy('apellidos')->orderBy('nombres')->get()
                 ->map(fn ($m) => [
                     'id' => $m->id, 
                     'nombre' => "Dr(a). {$m->apellidos} {$m->nombres}"

@@ -50,6 +50,20 @@
                         <p><strong>Paciente:</strong> {{ trim(($cita->paciente->nombres ?? '') . ' ' . ($cita->paciente->apellidos ?? '')) ?: 'N/D' }}</p>
                         <p><strong>Médico:</strong> {{ $cita->medico->nombre_completo ?? trim(($cita->medico->nombres ?? '') . ' ' . ($cita->medico->apellidos ?? '')) ?: 'N/D' }}</p>
                         <p><strong>Estado:</strong> <span class="px-2 py-1 text-xs rounded bg-gray-200 uppercase font-semibold">{{ $cita->estado ?? 'Pendiente' }}</span></p>
+                        
+                        {{-- MUESTRA ESTADO DE PAGO --}}
+                        <p class="col-span-full mt-2">
+                            <strong>Estado de Pago:</strong> 
+                            @if($cita->metodo_pago)
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                    ✓ Pagado vía {{ $cita->metodo_pago }}
+                                </span>
+                            @else
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">
+                                    Registrado sin pasarela
+                                </span>
+                            @endif
+                        </p>
                     </div>
                 </div>
 
