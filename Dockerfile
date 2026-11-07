@@ -1,5 +1,3 @@
-FROM php:8.2-apache
-
 # Instalar dependencias del sistema y Node.js para Vite
 RUN apt-get update && apt-get install -y \
     git \
@@ -36,4 +34,5 @@ RUN sed -i -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-availa
 
 EXPOSE 80
 
-CMD php artisan migrate:fresh --seed --force && apache2-foreground
+# Ejecutar migraciones automáticamente y levantar Apache
+CMD php artisan migrate --force && apache2-foreground
