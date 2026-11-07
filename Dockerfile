@@ -26,7 +26,7 @@ COPY . .
 RUN composer install --no-dev --optimize-autoloader
 RUN npm install && npm run build
 
-# Crear la estructura de storage completa
+# Crear estructura completa de directorios de almacenamiento
 RUN mkdir -p /var/www/html/storage/app/public \
     /var/www/html/storage/framework/cache/data \
     /var/www/html/storage/framework/sessions \
@@ -35,7 +35,7 @@ RUN mkdir -p /var/www/html/storage/app/public \
     /var/www/html/storage/logs \
     /var/www/html/bootstrap/cache
 
-# Asignar permisos correctos
+# Asignar propietario www-data y permisos 775 de escritura
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
@@ -44,5 +44,5 @@ RUN sed -i -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-availa
 
 EXPOSE 80
 
-# Ejecutar migraciones automáticamente y levantar Apache
-CMD php artisan migrate --force && apache2-foreground
+# Limpiar caché de vistas, ejecutar migraciones automáticamente y levantar Apache
+CMD php artisan view:clear && php artisan config:clear && php artisan migrate --force && apache2-foreground
