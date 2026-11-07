@@ -1,3 +1,5 @@
+FROM php:8.2-apache
+
 # Instalar dependencias del sistema y Node.js para Vite
 RUN apt-get update && apt-get install -y \
     git \
@@ -26,7 +28,7 @@ COPY . .
 RUN composer install --no-dev --optimize-autoloader
 RUN npm install && npm run build
 
-# Crear estructura completa de directorios storage en una sola linea valida
+# Crear estructura completa de directorios storage
 RUN mkdir -p /var/www/html/storage/app/public /var/www/html/storage/framework/cache/data /var/www/html/storage/framework/sessions /var/www/html/storage/framework/testing /var/www/html/storage/framework/views /var/www/html/storage/logs /var/www/html/bootstrap/cache
 
 # Asignar propietario www-data y permisos de escritura
