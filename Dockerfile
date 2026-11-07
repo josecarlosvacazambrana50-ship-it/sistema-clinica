@@ -26,8 +26,10 @@ COPY . .
 RUN composer install --no-dev --optimize-autoloader
 RUN npm install && npm run build
 
-# Permisos de carpetas
+# Crear las carpetas de almacenamiento necesarias para Laravel y otorgar permisos
+RUN mkdir -p /var/www/html/storage/framework/views /var/www/html/storage/framework/sessions /var/www/html/storage/framework/cache
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public
+RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Apuntar Apache a la carpeta public
 RUN sed -i -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
